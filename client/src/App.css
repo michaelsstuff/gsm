@@ -1,0 +1,54 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
+
+.server-card {
+  transition: transform .2s;
+  margin-bottom: 20px;
+}
+
+.server-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,.12), 0 4px 8px rgba(0,0,0,.06);
+}
+
+.server-logo {
+  max-height: 100px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.server-status {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+.status-running {
+  background-color: #28a745;
+}
+
+.status-stopped {
+  background-color: #dc3545;
+}
+
+.status-error {
+  background-color: #ffc107;
+}
+
+.admin-actions button {
+  margin-right: 5px;
+}
+
+.form-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
