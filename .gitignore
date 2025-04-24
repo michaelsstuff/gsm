@@ -41,3 +41,8 @@ data/
 
 # Backup files
 backups/
+
+# Certificate files
+*.pem
+*.key
+*.crt
