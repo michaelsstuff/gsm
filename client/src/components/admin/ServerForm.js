@@ -10,6 +10,8 @@ const ServerForm = () => {
   const [loading, setLoading] = useState(isEditing);
   const [error, setError] = useState(null);
   const [availableContainers, setAvailableContainers] = useState([]);
+  
+  // Initialize formData without commands
   const [formData, setFormData] = useState({
     name: '',
     connectionString: '',
@@ -18,12 +20,6 @@ const ServerForm = () => {
     websiteUrl: '',
     description: '',
     containerName: '',
-    commands: {
-      start: 'start.sh',
-      stop: 'stop.sh',
-      restart: 'restart.sh',
-      backup: 'backup.sh'
-    }
   });
 
   useEffect(() => {
@@ -32,15 +28,9 @@ const ServerForm = () => {
       if (isEditing) {
         try {
           const res = await axios.get(`/api/admin/servers/${id}`);
-          setFormData({
-            ...res.data,
-            commands: {
-              start: res.data.commands?.start || 'start.sh',
-              stop: res.data.commands?.stop || 'stop.sh',
-              restart: res.data.commands?.restart || 'restart.sh',
-              backup: res.data.commands?.backup || 'backup.sh'
-            }
-          });
+          // If commands property exists, destructure it out as we don't need it
+          const { commands, ...serverData } = res.data;
+          setFormData(serverData);
           setLoading(false);
         } catch (err) {
           console.error('Error fetching server:', err);
@@ -64,23 +54,10 @@ const ServerForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
-    // Handle nested fields for commands
-    if (name.startsWith('commands.')) {
-      const commandType = name.split('.')[1];
-      setFormData({
-        ...formData,
-        commands: {
-          ...formData.commands,
-          [commandType]: value
-        }
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
-    }
+    setFormData({
+      ...formData,
+      [name]: value
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -92,7 +69,7 @@ const ServerForm = () => {
         // Update existing server
         await axios.put(`/api/admin/servers/${id}`, formData);
       } else {
-        // Create new server
+        // Create new server - no longer adding commands
         await axios.post('/api/admin/servers', formData);
       }
       
@@ -186,15 +163,27 @@ const ServerForm = () => {
 
             <Form.Group className="mb-3" controlId="logo">
               <Form.Label>Logo URL</Form.Label>
-              <Form.Control
-                type="text"
-                name="logo"
-                value={formData.logo}
-                onChange={handleChange}
-                placeholder="https://example.com/logo.png"
-              />
+              <div className="input-group">
+                <Form.Control
+                  type="text"
+                  name="logo"
+                  value={formData.logo}
+                  onChange={handleChange}
+                  placeholder="https://example.com/logo.png"
+                />
+                {formData.logo && (
+                  <Button 
+                    variant="outline-secondary"
+                    onClick={() => {
+                      window.open(formData.logo, '_blank');
+                    }}
+                  >
+                    Test URL
+                  </Button>
+                )}
+              </div>
               <Form.Text className="text-muted">
-                Link to an image for the game server. Default will be used if empty.
+                Link to an image for the game server. If the image can't be loaded, a placeholder with the server initials will be shown.
               </Form.Text>
             </Form.Group>
 
@@ -235,65 +224,6 @@ const ServerForm = () => {
                 rows={3}
               />
             </Form.Group>
-
-            <h5 className="mt-4">Command Scripts</h5>
-            <p className="text-muted">
-              These scripts should already exist in your Docker container and will be executed when the corresponding actions are performed.
-            </p>
-
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3" controlId="commands.start">
-                  <Form.Label>Start Command</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="commands.start"
-                    value={formData.commands.start}
-                    onChange={handleChange}
-                    placeholder="start.sh"
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3" controlId="commands.stop">
-                  <Form.Label>Stop Command</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="commands.stop"
-                    value={formData.commands.stop}
-                    onChange={handleChange}
-                    placeholder="stop.sh"
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3" controlId="commands.restart">
-                  <Form.Label>Restart Command</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="commands.restart"
-                    value={formData.commands.restart}
-                    onChange={handleChange}
-                    placeholder="restart.sh"
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3" controlId="commands.backup">
-                  <Form.Label>Backup Command</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="commands.backup"
-                    value={formData.commands.backup}
-                    onChange={handleChange}
-                    placeholder="backup.sh"
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
 
             <div className="d-grid gap-2 mt-4">
               <Button variant="primary" type="submit" disabled={loading}>

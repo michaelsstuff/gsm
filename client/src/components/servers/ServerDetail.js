@@ -200,8 +200,26 @@ const ServerDetail = () => {
                 alt={`${server.name} logo`} 
                 className="server-logo"
                 onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = '/images/default-game-logo.png';
+                  // Prevent any further error events
+                  e.target.onError = null;
+                  
+                  // Instead of loading another image which could fail again,
+                  // replace with a text placeholder
+                  e.target.style.display = "none";
+                  const placeholder = document.createElement("div");
+                  placeholder.className = "server-logo-placeholder";
+                  placeholder.textContent = server.name.slice(0, 2).toUpperCase();
+                  placeholder.style.backgroundColor = "#007bff";
+                  placeholder.style.color = "white";
+                  placeholder.style.width = "100px";
+                  placeholder.style.height = "100px";
+                  placeholder.style.borderRadius = "50%";
+                  placeholder.style.display = "flex";
+                  placeholder.style.alignItems = "center";
+                  placeholder.style.justifyContent = "center";
+                  placeholder.style.fontSize = "32px";
+                  placeholder.style.margin = "0 auto";
+                  e.target.parentNode.appendChild(placeholder);
                 }}
               />
             </Card.Body>

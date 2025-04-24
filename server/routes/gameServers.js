@@ -16,7 +16,7 @@ const isAuthenticated = (req, res, next) => {
 // @access  Public
 router.get('/', async (req, res) => {
   try {
-    const gameServers = await GameServer.find().select('-commands');
+    const gameServers = await GameServer.find();
     
     // For each server, check and update its current status
     const updatedServers = await Promise.all(
@@ -45,8 +45,7 @@ router.get('/', async (req, res) => {
 // @access  Public
 router.get('/:id', async (req, res) => {
   try {
-    const gameServer = await GameServer.findById(req.params.id)
-      .select(req.isAuthenticated() && req.user.role === 'admin' ? '+commands' : '-commands');
+    const gameServer = await GameServer.findById(req.params.id);
     
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });

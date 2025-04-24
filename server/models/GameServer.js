@@ -13,7 +13,7 @@ const GameServerSchema = new mongoose.Schema({
   },
   logo: {
     type: String,
-    default: '/images/default-game-logo.png',
+    default: '', // Empty string will trigger the placeholder generation in the UI
   },
   steamAppId: {
     type: String,
@@ -32,24 +32,6 @@ const GameServerSchema = new mongoose.Schema({
     required: true,
     trim: true,
     unique: true,
-  },
-  commands: {
-    start: {
-      type: String,
-      default: 'start.sh',
-    },
-    stop: {
-      type: String,
-      default: 'stop.sh',
-    },
-    backup: {
-      type: String,
-      default: 'backup.sh',
-    },
-    restart: {
-      type: String,
-      default: 'restart.sh',
-    },
   },
   status: {
     type: String,

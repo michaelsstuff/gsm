@@ -23,8 +23,7 @@ router.post('/servers', isAdmin, async (req, res) => {
       steamAppId,
       websiteUrl,
       description,
-      containerName,
-      commands
+      containerName
     } = req.body;
 
     // Check if container exists
@@ -48,7 +47,6 @@ router.post('/servers', isAdmin, async (req, res) => {
       websiteUrl,
       description,
       containerName,
-      commands: commands || {},
       status: await dockerService.getContainerStatus(containerName)
     });
 
@@ -64,6 +62,29 @@ router.post('/servers', isAdmin, async (req, res) => {
   }
 });
 
+// @route   GET /api/admin/servers/:id
+// @desc    Get a specific game server for editing
+// @access  Admin only
+router.get('/servers/:id', isAdmin, async (req, res) => {
+  try {
+    const gameServer = await GameServer.findById(req.params.id);
+    
+    if (!gameServer) {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+    
+    res.json(gameServer);
+  } catch (error) {
+    console.error('Error fetching game server:', error);
+    
+    if (error.kind === 'ObjectId') {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+    
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   PUT /api/admin/servers/:id
 // @desc    Update a game server
 // @access  Admin only
@@ -75,8 +96,7 @@ router.put('/servers/:id', isAdmin, async (req, res) => {
       logo,
       steamAppId,
       websiteUrl,
-      description,
-      commands
+      description
     } = req.body;
 
     // Find game server
@@ -93,12 +113,6 @@ router.put('/servers/:id', isAdmin, async (req, res) => {
     if (steamAppId) gameServer.steamAppId = steamAppId;
     if (websiteUrl) gameServer.websiteUrl = websiteUrl;
     if (description) gameServer.description = description;
-    if (commands) {
-      if (commands.start) gameServer.commands.start = commands.start;
-      if (commands.stop) gameServer.commands.stop = commands.stop;
-      if (commands.backup) gameServer.commands.backup = commands.backup;
-      if (commands.restart) gameServer.commands.restart = commands.restart;
-    }
 
     await gameServer.save();
     

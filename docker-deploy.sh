@@ -51,19 +51,36 @@ case "$1" in
     docker cp $CONTAINER_ID:/data/db/backup ./backups/mongodb-$(date +%Y%m%d-%H%M%S)
     echo "Backup created in ./backups directory"
     ;;
-  ssl-setup)
-    echo "Setting up Let's Encrypt SSL certificates for domain: $DOMAIN"
-    ./init-letsencrypt.sh
-    echo "SSL certificates installed. Your site should now be available at https://$DOMAIN"
-    ;;
-  renew-ssl)
-    echo "Manually triggering SSL certificate renewal for domain: $DOMAIN"
-    docker-compose run --rm certbot renew
-    docker-compose exec frontend nginx -s reload
-    echo "SSL certificates renewed (if needed)"
+  custom-ssl)
+    # Check if certificate files are provided
+    if [ -z "$2" ] || [ -z "$3" ]; then
+      echo "Usage: $0 custom-ssl <path-to-fullchain.pem> <path-to-privkey.pem>"
+      echo "Example: $0 custom-ssl ./my-cert.pem ./my-key.pem"
+      exit 1
+    fi
+    
+    CERT_PATH=$2
+    KEY_PATH=$3
+    
+    echo "Setting up custom SSL certificates for domain: $DOMAIN"
+    
+    # Create certificate directories if they don't exist
+    mkdir -p ./data/certbot/conf/live/$DOMAIN
+    
+    # Copy the provided certificates
+    cp "$CERT_PATH" ./data/certbot/conf/live/$DOMAIN/fullchain.pem
+    cp "$KEY_PATH" ./data/certbot/conf/live/$DOMAIN/privkey.pem
+    
+    # Set proper permissions
+    chmod 600 ./data/certbot/conf/live/$DOMAIN/privkey.pem
+    
+    # Restart frontend to apply new certificates
+    docker-compose restart frontend
+    
+    echo "Custom SSL certificates installed. Your site should now be available at https://$DOMAIN"
     ;;
   *)
-    echo "Usage: $0 {start|stop|restart|rebuild|logs|backup|ssl-setup|renew-ssl}"
+    echo "Usage: $0 {start|stop|restart|rebuild|logs|backup|custom-ssl}"
     exit 1
     ;;
 esac
