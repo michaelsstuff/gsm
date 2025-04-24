@@ -1,11 +1,273 @@
+:root {
+  --bg-color: #f8f9fa;
+  --text-color: #212529;
+  --card-bg: #ffffff;
+  --card-border: rgba(0, 0, 0, 0.125);
+  --navbar-bg: #343a40;
+  --navbar-color: #ffffff;
+  --footer-bg: #f8f9fa;
+  --footer-text: #6c757d;
+  --border-color: #dee2e6;
+  --hover-bg: rgba(0, 0, 0, 0.05);
+  --input-bg: #ffffff;
+  --input-border: #ced4da;
+  --container-bg: #ffffff;
+  --modal-bg: #ffffff;
+}
+
+body.dark-mode {
+  --bg-color: #121212;
+  --text-color: #e9ecef;
+  --card-bg: #1e1e1e;
+  --card-border: rgba(255, 255, 255, 0.125);
+  --navbar-bg: #0d0d0d;
+  --navbar-color: #ffffff;
+  --footer-bg: #0d0d0d;
+  --footer-text: #adb5bd;
+  --border-color: #495057;
+  --hover-bg: rgba(255, 255, 255, 0.05);
+  --input-bg: #2d2d2d;
+  --input-border: #495057;
+  --container-bg: #1e1e1e;
+  --modal-bg: #1e1e1e;
+}
+
+body {
+  background-color: var(--bg-color) !important;
+  color: var(--text-color) !important;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Server status indicators - placing these high in the CSS file to give them priority */
+/* Base definitions for status indicators */
+.server-status {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+/* Status colors that work in both light and dark mode */
+.server-status.status-running,
+.status-running.server-status {
+  background-color: #28a745 !important; /* Green */
+}
+
+.server-status.status-stopped,
+.status-stopped.server-status {
+  background-color: #dc3545 !important; /* Red */
+}
+
+.server-status.status-error,
+.status-error.server-status {
+  background-color: #ffc107 !important; /* Yellow */
+}
+
+/* Badge background colors in both modes */
+.badge.bg-success {
+  background-color: #198754 !important;
+  color: white !important;
+}
+
+.badge.bg-danger {
+  background-color: #dc3545 !important;
+  color: white !important;
+}
+
+.badge.bg-warning {
+  background-color: #ffc107 !important;
+  color: black !important;
+}
+
+.badge.bg-primary {
+  background-color: #0d6efd !important;
+  color: white !important;
+}
+
+.badge.bg-secondary {
+  background-color: #6c757d !important;
+  color: white !important;
+}
+
+/* Ensure status indicators inside badges are never overridden */
+.badge .server-status {
+  display: inline-block !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  margin-right: 5px !important;
+}
+
+.badge .server-status.status-running,
+.badge .status-running.server-status {
+  background-color: #28a745 !important;
+}
+
+.badge .server-status.status-stopped,
+.badge .status-stopped.server-status {
+  background-color: #dc3545 !important;
+}
+
+.badge .server-status.status-error,
+.badge .status-error.server-status {
+  background-color: #ffc107 !important;
+}
+
 .app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: var(--bg-color) !important;
 }
 
 main {
   flex: 1;
+  background-color: var(--bg-color) !important;
+}
+
+.container {
+  background-color: var(--bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+/* Navbar styles */
+.navbar.bg-dark, .navbar.custom-navbar {
+  background-color: var(--navbar-bg) !important;
+}
+
+/* Target all elements inside navbar */
+.navbar.bg-dark *, .navbar.custom-navbar * {
+  background-color: transparent !important;
+}
+
+/* Fix for the Container inside Navbar */
+.navbar.bg-dark .container,
+.navbar.custom-navbar .container {
+  background-color: transparent !important;
+}
+
+/* Fix for any elements with default bootstrap backgrounds */
+.navbar.bg-dark .bg-white,
+.navbar.custom-navbar .bg-white,
+.navbar.bg-dark [class*="bg-"],
+.navbar.custom-navbar [class*="bg-"] {
+  background-color: transparent !important;
+}
+
+.navbar-dark .navbar-nav .nav-link,
+.custom-navbar .navbar-nav .nav-link {
+  color: var(--navbar-color) !important;
+}
+
+.navbar-dark .navbar-brand,
+.custom-navbar .navbar-brand {
+  color: var(--navbar-color) !important;
+}
+
+.navbar-dark .navbar-text,
+.custom-navbar .navbar-text {
+  color: var(--navbar-color) !important;
+}
+
+.navbar-username,
+.navbar-dark .navbar-text .text-light,
+.custom-navbar .navbar-text .text-light {
+  color: var(--navbar-color) !important;
+}
+
+/* Navbar collapse background fix */
+.navbar-collapse {
+  background-color: transparent !important;
+}
+
+/* Fix for dropdown menu in navbar */
+.navbar .dropdown-menu {
+  background-color: var(--navbar-bg) !important;
+}
+
+.navbar .dropdown-item {
+  color: var(--navbar-color) !important;
+}
+
+.navbar .dropdown-item:hover,
+.navbar .dropdown-item:focus {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Card styles */
+.card {
+  background-color: var(--card-bg) !important;
+  border-color: var(--card-border) !important;
+  transition: all 0.3s ease;
+  color: var(--text-color) !important;
+}
+
+/* Form input styles */
+.form-control {
+  background-color: var(--input-bg) !important;
+  border-color: var(--input-border) !important;
+  color: var(--text-color) !important;
+}
+
+.form-control:focus {
+  background-color: var(--input-bg) !important;
+  color: var(--text-color) !important;
+}
+
+.form-label {
+  color: var(--text-color) !important;
+}
+
+/* Table styles */
+.table {
+  color: var(--text-color) !important;
+}
+
+/* Table dark mode */
+body.dark-mode .table {
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+body.dark-mode .table td, 
+body.dark-mode .table th,
+body.dark-mode .table thead th {
+  border-color: var(--border-color) !important;
+  background-color: var(--card-bg) !important;
+}
+
+/* Footer styles */
+.footer {
+  margin-top: auto;
+  padding: 1rem 0;
+  background-color: var(--footer-bg) !important;
+  color: var(--footer-text) !important;
+}
+
+.footer .text-muted {
+  color: var(--footer-text) !important;
+}
+
+/* Fix for footer container in dark mode */
+.footer .container {
+  background-color: transparent !important;
+}
+
+/* Theme toggle button */
+.theme-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--navbar-color);
+  cursor: pointer;
+  margin-left: 10px;
+  display: flex;
+  align-items: center;
 }
 
 .server-card {
@@ -24,26 +286,6 @@ main {
   object-fit: contain;
 }
 
-.server-status {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  margin-right: 5px;
-}
-
-.status-running {
-  background-color: #28a745;
-}
-
-.status-stopped {
-  background-color: #dc3545;
-}
-
-.status-error {
-  background-color: #ffc107;
-}
-
 .admin-actions button {
   margin-right: 5px;
 }
@@ -51,4 +293,306 @@ main {
 .form-container {
   max-width: 600px;
   margin: 0 auto;
+}
+
+/* Log container dark mode */
+body.dark-mode .log-container {
+  background-color: #121212 !important;
+  color: #e9ecef !important;
+}
+
+/* Modal dark mode styles */
+body.dark-mode .modal-content {
+  background-color: var(--modal-bg) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+body.dark-mode .modal-header,
+body.dark-mode .modal-footer {
+  border-color: var(--border-color) !important;
+  background-color: var(--modal-bg) !important;
+}
+
+body.dark-mode .dropdown-menu {
+  background-color: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+}
+
+body.dark-mode .dropdown-item {
+  color: var(--text-color) !important;
+}
+
+body.dark-mode .dropdown-item:hover,
+body.dark-mode .dropdown-item:focus {
+  background-color: var(--hover-bg) !important;
+}
+
+body.dark-mode .list-group-item {
+  background-color: var(--card-bg) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+body.dark-mode .accordion-button,
+body.dark-mode .accordion-item,
+body.dark-mode .accordion-body {
+  background-color: var(--card-bg) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Modals, alerts, and other overlays */
+body.dark-mode .alert {
+  background-color: var(--card-bg) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Fix for any Bootstrap components with backgrounds */
+.bg-light {
+  background-color: var(--bg-color) !important;
+}
+
+.bg-white {
+  background-color: var(--container-bg) !important;
+}
+
+.bg-dark {
+  background-color: var(--navbar-bg) !important;
+}
+
+/* Fix any buttons that might still have light backgrounds */
+body.dark-mode .btn-light {
+  background-color: var(--card-bg) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* General overrides for any elements missing the theme styling */
+body.dark-mode * {
+  border-color: var(--border-color);
+}
+
+/* Fix for any hard-coded background colors */
+body.dark-mode [style*="background-color"] {
+  background-color: var(--bg-color) !important;
+}
+
+/* Admin dashboard and User Management specific dark mode fixes */
+/* Tables in dark mode */
+body.dark-mode .table {
+  color: var(--text-color) !important;
+}
+
+/* Links in dark mode */
+body.dark-mode a {
+  color: #60a5fa !important;
+}
+
+body.dark-mode a:hover {
+  color: #93c5fd !important;
+}
+
+/* Table rows and cells */
+body.dark-mode .table tr, 
+body.dark-mode .table td,
+body.dark-mode .table th {
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Card text in dark mode */
+body.dark-mode .card {
+  color: var(--text-color) !important;
+}
+
+body.dark-mode .card-header {
+  background-color: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-color) !important;
+}
+
+/* Modal form labels in dark mode */
+body.dark-mode .form-label {
+  color: var(--text-color) !important;
+}
+
+body.dark-mode .modal-title {
+  color: var(--text-color) !important;
+}
+
+/* Fix text in alerts */
+body.dark-mode .alert {
+  color: var(--text-color) !important;
+}
+
+/* Fix text in spinners and loading indicators */
+body.dark-mode .spinner-border + p {
+  color: var(--text-color) !important;
+}
+
+/* Fix headings */
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6 {
+  color: var(--text-color) !important;
+}
+
+/* Fix text in badges that might have default Bootstrap colors */
+body.dark-mode .badge.bg-secondary {
+  background-color: #6c757d !important;
+  color: white !important;
+}
+
+body.dark-mode .badge.bg-primary {
+  background-color: #0d6efd !important;
+  color: white !important;
+}
+
+/* Form select boxes */
+body.dark-mode .form-select {
+  background-color: var(--input-bg) !important;
+  color: var(--text-color) !important;
+  border-color: var(--input-border) !important;
+}
+
+/* Fix for buttons in tables that might have low contrast */
+body.dark-mode .table .btn-outline-primary,
+body.dark-mode .table .btn-outline-secondary,
+body.dark-mode .table .btn-outline-danger {
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+body.dark-mode .table .btn-outline-primary:hover,
+body.dark-mode .table .btn-outline-secondary:hover,
+body.dark-mode .table .btn-outline-danger:hover {
+  background-color: var(--hover-bg) !important;
+}
+
+/* Fix any paragraph or span text */
+body.dark-mode p,
+body.dark-mode span:not(.badge):not(.btn) {
+  color: var(--text-color) !important;
+}
+
+/* Button styles for dark mode */
+/* Standard buttons */
+body.dark-mode .btn {
+  color: var(--text-color) !important;
+}
+
+/* Primary buttons */
+body.dark-mode .btn-primary {
+  background-color: #0d6efd !important;
+  border-color: #0d6efd !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .btn-primary:hover {
+  background-color: #0b5ed7 !important;
+  border-color: #0a58ca !important;
+}
+
+/* Secondary buttons */
+body.dark-mode .btn-secondary {
+  background-color: #6c757d !important;
+  border-color: #6c757d !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .btn-secondary:hover {
+  background-color: #5c636a !important;
+  border-color: #565e64 !important;
+}
+
+/* Success buttons */
+body.dark-mode .btn-success {
+  background-color: #198754 !important;
+  border-color: #198754 !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .btn-success:hover {
+  background-color: #157347 !important;
+  border-color: #146c43 !important;
+}
+
+/* Danger buttons */
+body.dark-mode .btn-danger {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .btn-danger:hover {
+  background-color: #bb2d3b !important;
+  border-color: #b02a37 !important;
+}
+
+/* Warning buttons */
+body.dark-mode .btn-warning {
+  background-color: #ffc107 !important;
+  border-color: #ffc107 !important;
+  color: #000000 !important;
+}
+
+body.dark-mode .btn-warning:hover {
+  background-color: #ffca2c !important;
+  border-color: #ffc720 !important;
+}
+
+/* Outline buttons - these need special attention */
+body.dark-mode .btn-outline-primary {
+  color: #60a5fa !important;
+  border-color: #60a5fa !important;
+}
+
+body.dark-mode .btn-outline-primary:hover {
+  background-color: #60a5fa !important;
+  color: #000000 !important;
+}
+
+body.dark-mode .btn-outline-secondary {
+  color: #a1a1aa !important;
+  border-color: #a1a1aa !important;
+}
+
+body.dark-mode .btn-outline-secondary:hover {
+  background-color: #a1a1aa !important;
+  color: #000000 !important;
+}
+
+body.dark-mode .btn-outline-success {
+  color: #34d399 !important;
+  border-color: #34d399 !important;
+}
+
+body.dark-mode .btn-outline-success:hover {
+  background-color: #34d399 !important;
+  color: #000000 !important;
+}
+
+body.dark-mode .btn-outline-danger {
+  color: #f87171 !important;
+  border-color: #f87171 !important;
+}
+
+body.dark-mode .btn-outline-danger:hover {
+  background-color: #f87171 !important;
+  color: #000000 !important;
+}
+
+body.dark-mode .btn-outline-light {
+  color: #e5e7eb !important;
+  border-color: #e5e7eb !important;
+}
+
+body.dark-mode .btn-outline-light:hover {
+  background-color: #e5e7eb !important;
+  color: #000000 !important;
 }

@@ -71,9 +71,11 @@ const App = () => {
             />
           </Routes>
         </main>
-        <footer className="footer mt-5 py-3 bg-light">
+        <footer className="footer mt-5 py-3">
           <div className="container text-center">
-            <span className="text-muted">Game Server Manager &copy; {new Date().getFullYear()}</span>
+            <span className="text-muted" style={{ color: 'var(--text-muted)' }}>
+              Game Server Manager &copy; {new Date().getFullYear()}
+            </span>
           </div>
         </footer>
       </div>
