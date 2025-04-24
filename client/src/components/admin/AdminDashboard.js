@@ -100,6 +100,9 @@ const AdminDashboard = () => {
           <h1>Admin Dashboard</h1>
         </Col>
         <Col xs="auto">
+          <Link to="/admin/users" className="btn btn-outline-secondary me-2">
+            Manage Users
+          </Link>
           <Link to="/admin/servers/new" className="btn btn-primary">
             Add New Server
           </Link>

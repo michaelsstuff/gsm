@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const GameServer = require('../models/GameServer');
+const User = require('../models/User');
 const dockerService = require('../utils/dockerService');
 
 // Middleware to check if user is authenticated and an admin
@@ -10,6 +11,66 @@ const isAdmin = (req, res, next) => {
   }
   return res.status(403).json({ message: 'Forbidden: Admin access required' });
 };
+
+// @route   GET /api/admin/users
+// @desc    Get all users (admin only)
+// @access  Admin only
+router.get('/users', isAdmin, async (req, res) => {
+  try {
+    // Exclude password field from results
+    const users = await User.find().select('-password');
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/users/:id/role
+// @desc    Update a user's role
+// @access  Admin only
+router.put('/users/:id/role', isAdmin, async (req, res) => {
+  try {
+    const { role } = req.body;
+    
+    // Validate role input
+    if (!['admin', 'user'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role specified' });
+    }
+    
+    // Find user by ID
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Prevent admins from demoting themselves
+    if (req.user.id === req.params.id && role !== 'admin') {
+      return res.status(400).json({ message: 'You cannot demote yourself from admin role' });
+    }
+    
+    // Update user role
+    user.role = role;
+    await user.save();
+    
+    // Return updated user without password
+    const updatedUser = await User.findById(req.params.id).select('-password');
+    
+    res.json({
+      message: `User role updated to ${role} successfully`,
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    
+    if (error.kind === 'ObjectId') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 // @route   POST /api/admin/servers
 // @desc    Create a new game server

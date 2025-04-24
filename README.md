@@ -17,15 +17,16 @@ A web application for managing and monitoring game servers running as Docker con
 - **Database**: MongoDB
 - **Authentication**: Passport.js with JWT
 - **Container Management**: Dockerode for Docker API integration
+- **Deployment**: Docker Compose for containerized deployment
 
 ## Prerequisites
 
-- Node.js 16.x or higher
-- MongoDB database
-- Docker engine running on the host machine
-- Game server Docker containers (already set up)
+- Docker and Docker Compose
+- SSL certificates (for production deployment)
 
-## Installation
+## Installation and Deployment
+
+The Game Server Manager is designed to be deployed using Docker Compose for easier setup and management.
 
 ### 1. Clone the repository
 
@@ -34,78 +35,72 @@ git clone https://your-repository-url/game-server-manager.git
 cd game-server-manager
 ```
 
-### 2. Set up the server
+### 2. Environment Configuration
 
 ```bash
-# Navigate to server directory
-cd server
-
-# Install dependencies
-npm install
-
-# Configure environment variables
-cp .env.example .env
-# Edit .env with your MongoDB connection string and secrets
+# The system will create an .env file from template on first run
+./docker-deploy.sh start
 ```
 
-### 3. Set up the client
+After the script creates the .env file, edit it with your preferred settings before continuing deployment.
+
+### 3. Deployment Commands
+
+The `docker-deploy.sh` script provides all necessary commands to manage your deployment:
 
 ```bash
-# Navigate to client directory
-cd ../client
+# Start the application
+./docker-deploy.sh start
 
-# Install dependencies
-npm install
+# Stop the application
+./docker-deploy.sh stop
+
+# Restart the application
+./docker-deploy.sh restart
+
+# Rebuild and restart containers
+./docker-deploy.sh rebuild
+
+# View container logs
+./docker-deploy.sh logs
+
+# Backup MongoDB data
+./docker-deploy.sh backup
+
+# Set up custom SSL certificates
+./docker-deploy.sh custom-ssl <path-to-fullchain.pem> <path-to-privkey.pem>
 ```
 
-## Running the Application
+## SSL Configuration
 
-### Development Mode
+For production deployment, you have two options:
 
-```bash
-# Start the server (from server directory)
-npm run dev
+1. **Let's Encrypt** (Automatic): Follow the instructions in `init-letsencrypt.sh`
+2. **Custom SSL**: Use your own certificates with:
+   ```bash
+   ./docker-deploy.sh custom-ssl ./my-cert.pem ./my-key.pem
+   ```
 
-# Start the client (from client directory)
-npm start
-```
-
-The server will run on http://localhost:5000 and the client on http://localhost:3000.
-
-### Production Mode
-
-```bash
-# Build the client
-cd client
-npm run build
-
-# Start the server in production mode
-cd ../server
-NODE_ENV=production npm start
-```
-
-## Docker Support
-
-The application is designed to work with existing game server containers. Make sure your Docker containers have the required scripts for:
-
-- Starting the game server (`start.sh`)
-- Stopping the game server (`stop.sh`)
-- Restarting the game server (`restart.sh`)
-- Backing up the game server (`backup.sh`)
+For more details on SSL setup, see the `SSL-SETUP.md` file.
 
 ## Initial Setup
 
-1. Start the application
-2. Register the first user (automatically becomes an admin)
-3. Log in as admin
-4. Add your game servers through the admin dashboard
+1. Deploy the application using `./docker-deploy.sh start`
+2. Access the web interface at https://your-domain
+3. Register the first user (automatically becomes an admin)
+4. Log in as admin
+5. Add your game servers through the admin dashboard
 
 ## Security Considerations
 
 - Change the default secrets in the `.env` file
 - Set up proper Docker security for container management
-- When deploying to production, use HTTPS
-- Consider setting up proper MongoDB authentication
+- Always use HTTPS in production environments
+- Configure proper MongoDB authentication
+
+## Quick Start
+
+For a more detailed step-by-step guide, see `QUICK-START.md`.
 
 ## License
 

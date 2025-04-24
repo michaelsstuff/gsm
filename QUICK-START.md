@@ -1,45 +1,84 @@
 # Game Server Manager - Quick Start Guide
 
-This guide will help you quickly get your game server management system up and running.
+This guide will help you quickly get your game server management system up and running using Docker Compose.
 
 ## Initial Setup
 
-### 1. Install Dependencies
+### 1. Prerequisites
 
-Install all dependencies for the server, client, and development tools:
+- Docker and Docker Compose installed on your system
+- Domain name configured (for production deployments)
+- Basic understanding of Docker concepts
 
-```bash
-npm run install-all
-```
+### 2. Deploy with Docker
 
-### 2. Start MongoDB
-
-Ensure MongoDB is running on your system. If you don't have MongoDB installed:
-
-#### Using Docker (recommended)
-```bash
-docker run -d --name mongodb -p 27017:27017 mongo:latest
-```
-
-#### Using a local installation
-Start your MongoDB service according to your operating system's instructions.
-
-### 3. Start the Application
-
-To run both the server and client in development mode:
+The easiest way to deploy the Game Server Manager is using the provided docker-deploy.sh script:
 
 ```bash
-npm start
+# Make the script executable if needed
+chmod +x docker-deploy.sh
+
+# Start the application for the first time
+./docker-deploy.sh start
 ```
 
-This will launch:
-- Backend server on http://localhost:5000
-- Frontend client on http://localhost:3000
+On first run, the script will:
+- Create an `.env.example` file if not present
+- Ask you to configure your environment variables
+- Deploy the containers using Docker Compose
 
-## First-time Configuration
+### 3. Environment Configuration
+
+Edit the `.env` file with your preferred settings:
+- Database credentials
+- Domain name
+- Admin credentials
+- Secret keys
+
+### 4. Accessing the Application
+
+- The frontend will be available at https://your-domain
+- For local development, it will be available at https://localhost
+
+## Managing Your Deployment
+
+### Basic Commands
+
+```bash
+# Start the application
+./docker-deploy.sh start
+
+# Stop the application
+./docker-deploy.sh stop
+
+# Restart the application
+./docker-deploy.sh restart
+
+# View logs from all containers
+./docker-deploy.sh logs
+
+# Backup the MongoDB database
+./docker-deploy.sh backup
+```
+
+### SSL Configuration
+
+For production use, configure SSL using one of these methods:
+
+1. **Let's Encrypt (Automated)**:
+   ```bash
+   ./init-letsencrypt.sh
+   ```
+
+2. **Custom SSL Certificates**:
+   ```bash
+   ./docker-deploy.sh custom-ssl ./my-cert.pem ./my-key.pem
+   ```
+
+## First-time Application Setup
 
 1. **Create Admin Account**
-   - Open http://localhost:3000 in your browser
+   - Open https://your-domain in your browser
    - Click "Register" and create your first user
    - The first registered user automatically becomes an admin
 
@@ -53,37 +92,20 @@ This will launch:
      - Docker container name
      - Logo URL (optional)
      - Steam App ID (optional)
-     - Custom command scripts (if different from defaults)
 
 3. **Test Game Server Commands**
    - After adding a game server, test the start/stop functionality
-   - If commands don't work, check that:
-     - The Docker container exists
-     - The command scripts exist within the container
-     - The Docker socket is accessible to the application
+   - Verify that the Docker API can properly communicate with your game server containers
 
-## Docker Container Requirements
+## Troubleshooting
 
-For each game server Docker container, you should have:
-
-1. **Command Scripts**:
-   - `start.sh`: Script to start the game server
-   - `stop.sh`: Script to gracefully stop the game server
-   - `restart.sh`: Script to restart the game server
-   - `backup.sh`: Script to back up game data
-
-2. **Proper File Permissions**:
-   - Make sure these scripts are executable: `chmod +x *.sh`
-
-## Common Issues
-
-- **Docker Connection Errors**: Ensure the application has access to Docker socket
-- **MongoDB Connection Issues**: Check your MongoDB connection in `.env`
-- **Script Execution Failures**: Verify script paths and permissions inside containers
+- **Container Startup Issues**: Check logs using `./docker-deploy.sh logs`
+- **Database Connection Errors**: Verify MongoDB container is running and credentials are correct
+- **SSL Certificate Problems**: Ensure your domain points to your server and certificates are valid
+- **Docker API Errors**: Check that the Docker socket is properly mounted in the containers
 
 ## Next Steps
 
-- Set up HTTPS for production use
-- Configure proper MongoDB security
+- Set up regular backups for your database using `./docker-deploy.sh backup`
 - Replace placeholder images with actual game logos
-- Set up regular backups for your database
+- Configure monitoring for your Docker containers

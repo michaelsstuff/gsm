@@ -8,6 +8,7 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ServerForm from './components/admin/ServerForm';
+import UserManagement from './components/admin/UserManagement';
 import { useAuth } from './context/AuthContext';
 import './App.css';
 
@@ -41,6 +42,14 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminDashboard />
+                </AdminRoute>
+              } 
+            />
+            <Route 
+              path="/admin/users" 
+              element={
+                <AdminRoute>
+                  <UserManagement />
                 </AdminRoute>
               } 
             />
