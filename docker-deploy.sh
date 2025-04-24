@@ -51,6 +51,90 @@ case "$1" in
     docker cp $CONTAINER_ID:/data/db/backup ./backups/mongodb-$(date +%Y%m%d-%H%M%S)
     echo "Backup created in ./backups directory"
     ;;
+  letsencrypt-cloudflare)
+    # Check if Cloudflare credentials are set in environment variables
+    CF_EMAIL=${CLOUDFLARE_EMAIL}
+    CF_API_KEY=${CLOUDFLARE_API_KEY}
+    
+    # Allow override from command line parameters
+    if [ ! -z "$2" ] && [ ! -z "$3" ]; then
+      CF_EMAIL=$2
+      CF_API_KEY=$3
+    fi
+    
+    # Final check for required credentials
+    if [ -z "$CF_EMAIL" ] || [ -z "$CF_API_KEY" ]; then
+      echo "Error: Cloudflare credentials are required."
+      echo "Either set CLOUDFLARE_EMAIL and CLOUDFLARE_API_KEY in .env file"
+      echo "Or provide them as parameters:"
+      echo "Usage: $0 letsencrypt-cloudflare <cloudflare-email> <cloudflare-api-key>"
+      echo "Example: $0 letsencrypt-cloudflare user@example.com 1234567890abcdef1234567890abcdef"
+      exit 1
+    fi
+    
+    echo "Setting up Let's Encrypt certificates for domain: $DOMAIN using Cloudflare DNS validation"
+    
+    # Create necessary directories
+    mkdir -p ./data/certbot/conf/live/$DOMAIN
+    mkdir -p ./data/certbot/cloudflare
+    
+    # Create Cloudflare credentials file
+    cat > ./data/certbot/cloudflare/cloudflare.ini << EOF
+dns_cloudflare_email = $CF_EMAIL
+dns_cloudflare_api_key = $CF_API_KEY
+EOF
+
+    # Set proper permissions for credentials file
+    chmod 600 ./data/certbot/cloudflare/cloudflare.ini
+    
+    # Run certbot with Cloudflare DNS plugin
+    docker run --rm -v "$(pwd)/data/certbot/conf:/etc/letsencrypt" \
+                    -v "$(pwd)/data/certbot/cloudflare:/cloudflare" \
+                    certbot/dns-cloudflare:latest certonly \
+                    --dns-cloudflare \
+                    --dns-cloudflare-credentials /cloudflare/cloudflare.ini \
+                    --email $CF_EMAIL \
+                    --agree-tos \
+                    --no-eff-email \
+                    -d $DOMAIN \
+                    --rsa-key-size 4096
+    
+    # Check if certificates were successfully obtained
+    if [ -f "./data/certbot/conf/live/$DOMAIN/fullchain.pem" ] && [ -f "./data/certbot/conf/live/$DOMAIN/privkey.pem" ]; then
+      echo "Let's Encrypt certificates successfully obtained!"
+      
+      # Set proper permissions
+      chmod 600 ./data/certbot/conf/live/$DOMAIN/privkey.pem
+      
+      # Restart frontend to apply new certificates
+      docker-compose restart frontend
+      
+      echo "Certificates installed. Your site should now be available at https://$DOMAIN"
+      echo "Note: These certificates will auto-renew when needed."
+      
+      # Setup auto-renewal
+      echo "Setting up auto-renewal..."
+      (crontab -l 2>/dev/null; echo "0 3 * * * cd $(pwd) && ./docker-deploy.sh renew-certificates") | crontab -
+      echo "Auto-renewal configured to run daily at 3:00 AM."
+    else
+      echo "Failed to obtain Let's Encrypt certificates. Check the output above for errors."
+      exit 1
+    fi
+    ;;
+  renew-certificates)
+    # Use environment variables for renewal
+    echo "Renewing Let's Encrypt certificates..."
+    docker run --rm -v "$(pwd)/data/certbot/conf:/etc/letsencrypt" \
+                    -v "$(pwd)/data/certbot/cloudflare:/cloudflare" \
+                    certbot/dns-cloudflare:latest renew \
+                    --dns-cloudflare \
+                    --dns-cloudflare-credentials /cloudflare/cloudflare.ini \
+                    --quiet
+    
+    # Restart frontend to apply renewed certificates
+    docker-compose restart frontend
+    echo "Certificate renewal attempt completed."
+    ;;
   custom-ssl)
     # Check if certificate files are provided
     if [ -z "$2" ] || [ -z "$3" ]; then
@@ -80,7 +164,7 @@ case "$1" in
     echo "Custom SSL certificates installed. Your site should now be available at https://$DOMAIN"
     ;;
   *)
-    echo "Usage: $0 {start|stop|restart|rebuild|logs|backup|custom-ssl}"
+    echo "Usage: $0 {start|stop|restart|rebuild|logs|backup|letsencrypt-cloudflare|renew-certificates|custom-ssl}"
     exit 1
     ;;
 esac
