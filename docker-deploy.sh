@@ -10,12 +10,16 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
+# Load environment variables
+source .env
+DOMAIN=${DOMAIN_NAME:-example.com}
+
 # Check command argument
 case "$1" in
   start)
     echo "Starting Game Server Manager containers..."
     docker-compose up -d
-    echo "Containers started! Frontend should be available at http://localhost (or configured port)"
+    echo "Containers started! Frontend should be available at https://$DOMAIN"
     ;;
   stop)
     echo "Stopping Game Server Manager containers..."
@@ -47,8 +51,19 @@ case "$1" in
     docker cp $CONTAINER_ID:/data/db/backup ./backups/mongodb-$(date +%Y%m%d-%H%M%S)
     echo "Backup created in ./backups directory"
     ;;
+  ssl-setup)
+    echo "Setting up Let's Encrypt SSL certificates for domain: $DOMAIN"
+    ./init-letsencrypt.sh
+    echo "SSL certificates installed. Your site should now be available at https://$DOMAIN"
+    ;;
+  renew-ssl)
+    echo "Manually triggering SSL certificate renewal for domain: $DOMAIN"
+    docker-compose run --rm certbot renew
+    docker-compose exec frontend nginx -s reload
+    echo "SSL certificates renewed (if needed)"
+    ;;
   *)
-    echo "Usage: $0 {start|stop|restart|rebuild|logs|backup}"
+    echo "Usage: $0 {start|stop|restart|rebuild|logs|backup|ssl-setup|renew-ssl}"
     exit 1
     ;;
 esac
