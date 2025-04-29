@@ -3,6 +3,7 @@ const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
+const GameServer = require('../models/GameServer');
 
 /**
  * Docker service to interact with Docker containers
@@ -115,19 +116,31 @@ const dockerService = {
   },
 
   /**
-   * Get a list of all Docker containers
-   * @returns {Promise<Array>} - List of containers
+   * Get a list of all available Docker containers (excluding GSM and already used containers)
+   * @returns {Promise<Array>} - List of available containers
    */
   async listContainers() {
     try {
       const containers = await docker.listContainers({ all: true });
-      return containers.map(container => ({
-        id: container.Id,
-        name: container.Names[0].replace('/', ''),
-        image: container.Image,
-        state: container.State,
-        status: container.Status
-      }));
+      
+      // Get list of container names that are already used by game servers
+      const gameServers = await GameServer.find().select('containerName');
+      const usedContainerNames = new Set(gameServers.map(server => server.containerName));
+      
+      // Filter and map containers
+      return containers
+        .filter(container => {
+          const containerName = container.Names[0].replace('/', '');
+          // Exclude GSM containers and already used containers
+          return !containerName.startsWith('gsm-') && !usedContainerNames.has(containerName);
+        })
+        .map(container => ({
+          id: container.Id,
+          name: container.Names[0].replace('/', ''),
+          image: container.Image,
+          state: container.State,
+          status: container.Status
+        }));
     } catch (error) {
       console.error('Error listing containers:', error);
       return [];

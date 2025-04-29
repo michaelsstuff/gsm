@@ -145,19 +145,24 @@ const ServerForm = () => {
                   disabled
                 />
               ) : (
-                <Form.Select
-                  name="containerName"
-                  value={formData.containerName}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="">Select a Docker container</option>
-                  {availableContainers.map(container => (
-                    <option key={container.id} value={container.name}>
-                      {container.name} ({container.image} - {container.state})
-                    </option>
-                  ))}
-                </Form.Select>
+                <>
+                  <Form.Select
+                    name="containerName"
+                    value={formData.containerName}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select a Docker container</option>
+                    {availableContainers.map(container => (
+                      <option key={container.id} value={container.name}>
+                        {container.name} ({container.image} - {container.state})
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Text className="text-muted">
+                    Only showing available containers. System containers and containers already used by other game servers are hidden.
+                  </Form.Text>
+                </>
               )}
             </Form.Group>
 
