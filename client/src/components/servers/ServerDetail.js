@@ -19,6 +19,11 @@ const ServerDetail = () => {
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [logLines, setLogLines] = useState(100);
 
+  // State for backup output
+  const [showBackupOutput, setShowBackupOutput] = useState(false);
+  const [backupOutput, setBackupOutput] = useState('');
+  const [backupInProgress, setBackupInProgress] = useState(false);
+
   useEffect(() => {
     const fetchServer = async () => {
       try {
@@ -63,7 +68,17 @@ const ServerDetail = () => {
   const handleCommand = async (command) => {
     try {
       setLoading(true);
-      await axios.post(`/api/admin/servers/${id}/command`, { command });
+      if (command === 'backup') {
+        setBackupInProgress(true);
+        setBackupOutput('Starting backup process...');
+        setShowBackupOutput(true);
+      }
+      
+      const response = await axios.post(`/api/admin/servers/${id}/command`, { command });
+      
+      if (command === 'backup') {
+        setBackupOutput(response.data.result || 'Backup completed successfully');
+      }
       
       // Trigger an immediate status refresh
       const res = await axios.get(`/api/servers/status/${id}`);
@@ -74,10 +89,15 @@ const ServerDetail = () => {
       
       setStatusRefresh(prev => prev + 1);
       setLoading(false);
+      setBackupInProgress(false);
     } catch (err) {
       console.error(`Error running ${command} command:`, err);
       setError(`Failed to ${command} server. ${err.response?.data?.message || ''}`);
       setLoading(false);
+      setBackupInProgress(false);
+      if (command === 'backup') {
+        setBackupOutput(`Backup failed: ${err.response?.data?.message || 'Unknown error'}`);
+      }
     }
   };
 
@@ -391,6 +411,45 @@ const ServerDetail = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleCloseLogs}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Backup Output Modal */}
+      <Modal show={showBackupOutput} onHide={() => setShowBackupOutput(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Backup Status - {server?.name}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <pre 
+            className="log-container p-3 bg-dark text-light" 
+            style={{ 
+              maxHeight: '400px', 
+              overflowY: 'auto',
+              fontSize: '0.9rem',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all'
+            }}
+          >
+            {backupInProgress ? (
+              <>
+                {backupOutput}
+                {'\n'}
+                <Spinner 
+                  animation="border" 
+                  size="sm" 
+                  className="ms-2"
+                  style={{ verticalAlign: 'middle' }}
+                />
+              </>
+            ) : (
+              backupOutput
+            )}
+          </pre>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowBackupOutput(false)}>
             Close
           </Button>
         </Modal.Footer>

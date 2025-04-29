@@ -1,7 +1,12 @@
 FROM node:22-alpine
 
-# Install Docker CLI to interact with the host Docker socket
-RUN apk add --no-cache docker
+# Install Docker CLI and shell utilities to interact with the host Docker socket
+RUN apk add --no-cache \
+    docker \
+    bash \
+    tar \
+    gzip \
+    pv
 
 WORKDIR /app
 
@@ -13,6 +18,12 @@ RUN npm install --production
 
 # Copy the rest of the application
 COPY . .
+
+# Make backup script executable
+RUN chmod +x /app/scripts/backup_container.sh
+
+# Create necessary directories
+RUN mkdir -p /app/backups
 
 # Expose the API port
 EXPOSE 5000

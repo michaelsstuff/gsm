@@ -67,18 +67,35 @@ const dockerService = {
         
         return stdout || `Container ${command}ed successfully`;
       } 
-      // Special case for backup - call the external script
+      // Special case for backup - using internal backup script
       else if (command === 'backup') {
-        const backupCommand = `/root/scripts/backup_container.sh ${containerName}`;
-        console.log(`Executing backup command: ${backupCommand}`);
-        
-        const { stdout, stderr } = await execPromise(backupCommand);
-        
-        if (stderr) {
-          console.warn(`Backup warning for ${containerName}:`, stderr);
+        try {
+          // Stop the container first
+          console.log(`Stopping container ${containerName} before backup...`);
+          await this.stopContainer(containerName);
+
+          // Execute backup using the internal script
+          const backupScript = '/app/scripts/backup_container.sh';
+          console.log(`Executing backup script for ${containerName}...`);
+          const { stdout, stderr } = await execPromise(`${backupScript} ${containerName}`);
+          
+          if (stderr) {
+            console.warn(`Backup warning for ${containerName}:`, stderr);
+          }
+
+          // Start the container again regardless of backup result
+          console.log(`Starting container ${containerName} after backup...`);
+          await this.startContainer(containerName);
+          
+          return stdout || `Backup completed successfully for container ${containerName}`;
+        } catch (error) {
+          // Make sure to start the container even if backup failed
+          console.log(`Ensuring container ${containerName} is started after error...`);
+          await this.startContainer(containerName);
+
+          console.error('Backup script error:', error.message);
+          throw new Error(`Backup failed: ${error.message}`);
         }
-        
-        return stdout || `Backup completed successfully for container ${containerName}`;
       }
       // For other custom commands, run inside the container
       else {

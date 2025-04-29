@@ -26,8 +26,10 @@ services:
     ports:
       - "${API_PORT:-5000}:5000"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock  # Mount Docker socket to manage game servers
-      - /root/scripts:/root/scripts:ro              # Mount scripts directory for backup commands
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/backup/container2/:/app/backups
+      - /var/opt/container-volumes:/app/container-volumes:ro
+      - /var/opt/container-compose:/app/container-compose:ro
     environment:
       - NODE_ENV=production
       - PORT=5000
