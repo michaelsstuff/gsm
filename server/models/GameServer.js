@@ -45,20 +45,29 @@ const GameServerSchema = new mongoose.Schema({
     },
     cronExpression: {
       type: String,
-      default: '0 0 * * *' // Daily at midnight
+      default: '0 0 * * *'
     },
     retention: {
       type: Number,
-      default: 5, // Keep last 5 backups by default
+      default: 5,
       min: 1,
       max: 30
     },
     lastBackup: {
-      type: Date
+      type: Date,
+      required: false,
+      default: null
     },
     lastError: {
-      message: String,
-      date: Date
+      type: new mongoose.Schema({
+        message: { type: String, default: null },
+        date: { type: Date, default: null }
+      }, { _id: false }),
+      required: false,
+      default: () => ({
+        message: null,
+        date: null
+      })
     }
   },
   createdAt: {

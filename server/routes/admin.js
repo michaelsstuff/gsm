@@ -324,21 +324,45 @@ router.put('/servers/:id/backup-schedule', isAdmin, async (req, res) => {
       return res.status(400).json({ message: 'Invalid cron expression' });
     }
 
-    // Update backup schedule
-    gameServer.backupSchedule = {
-      ...gameServer.backupSchedule,
-      enabled: enabled ?? gameServer.backupSchedule.enabled,
-      cronExpression: cronExpression ?? gameServer.backupSchedule.cronExpression,
-      retention: retention ?? gameServer.backupSchedule.retention
+    // Validate retention value
+    if (retention !== undefined) {
+      if (typeof retention !== 'number' || retention < 1 || retention > 30) {
+        return res.status(400).json({ message: 'Retention must be a number between 1 and 30' });
+      }
+    }
+
+    // Create a new backup schedule object
+    const newBackupSchedule = {
+      enabled: enabled ?? false,
+      cronExpression: cronExpression ?? '0 0 * * *',
+      retention: retention ?? 5,
+      lastBackup: gameServer.backupSchedule?.lastBackup || null,
+      lastError: {
+        message: gameServer.backupSchedule?.lastError?.message || null,
+        date: gameServer.backupSchedule?.lastError?.date || null
+      }
     };
 
-    await gameServer.save();
+    // Update the server with the new backup schedule
+    gameServer.backupSchedule = newBackupSchedule;
+
+    try {
+      await gameServer.save();
+    } catch (saveError) {
+      console.error('Error saving backup schedule:', saveError);
+      return res.status(400).json({ message: `Failed to save backup schedule: ${saveError.message}` });
+    }
 
     // Update scheduler
-    if (gameServer.backupSchedule.enabled) {
-      backupScheduler.updateJob(gameServer);
-    } else {
-      backupScheduler.stopJob(gameServer._id.toString());
+    try {
+      if (gameServer.backupSchedule.enabled) {
+        backupScheduler.updateJob(gameServer);
+      } else {
+        backupScheduler.stopJob(gameServer._id.toString());
+      }
+    } catch (schedulerError) {
+      console.error('Error updating backup scheduler:', schedulerError);
+      return res.status(500).json({ message: `Backup schedule saved but failed to update scheduler: ${schedulerError.message}` });
     }
 
     res.json({
@@ -347,7 +371,12 @@ router.put('/servers/:id/backup-schedule', isAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating backup schedule:', error);
-    res.status(500).json({ message: 'Server error' });
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Invalid backup schedule settings: ' + error.message });
+    } else if (error.kind === 'ObjectId') {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+    res.status(500).json({ message: 'Failed to update backup schedule: ' + error.message });
   }
 });
 

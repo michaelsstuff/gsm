@@ -204,7 +204,7 @@ const ServerDetail = () => {
       setLoading(false);
     } catch (err) {
       console.error('Error saving backup schedule:', err);
-      setError('Failed to save backup schedule');
+      setError(err.response?.data?.message || 'Failed to save backup schedule');
       setLoading(false);
     }
   };
