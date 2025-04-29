@@ -13,7 +13,7 @@ const GameServerSchema = new mongoose.Schema({
   },
   logo: {
     type: String,
-    default: '', // Empty string will trigger the placeholder generation in the UI
+    default: '',
   },
   steamAppId: {
     type: String,
@@ -38,6 +38,29 @@ const GameServerSchema = new mongoose.Schema({
     enum: ['running', 'stopped', 'error'],
     default: 'stopped',
   },
+  backupSchedule: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    cronExpression: {
+      type: String,
+      default: '0 0 * * *' // Daily at midnight
+    },
+    retention: {
+      type: Number,
+      default: 5, // Keep last 5 backups by default
+      min: 1,
+      max: 30
+    },
+    lastBackup: {
+      type: Date
+    },
+    lastError: {
+      message: String,
+      date: Date
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -45,7 +68,7 @@ const GameServerSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now,
-  },
+  }
 });
 
 // Update the 'updatedAt' field on save

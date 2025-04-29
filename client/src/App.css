@@ -224,6 +224,11 @@ main {
   color: var(--text-color) !important;
 }
 
+/* Form helper text in dark mode */
+body.dark-mode .form-text.text-muted {
+  color: #a1a1aa !important;  /* Using a lighter gray that's more readable in dark mode */
+}
+
 /* Table styles */
 .table {
   color: var(--text-color) !important;

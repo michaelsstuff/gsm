@@ -6,11 +6,12 @@
 # Check if container name is provided
 if [ -z "$1" ]; then
     echo "Error: Container name not provided"
-    echo "Usage: $0 <container_name>"
+    echo "Usage: $0 <container_name> [retention_days]"
     exit 1
 fi
 
 CONTAINER_NAME="$1"
+RETENTION="${2:-5}"  # Default to 5 if not provided
 BACKUP_DIR="/app/backups"
 VOLUMES_DIR="/app/container-volumes"
 DATE=$(date +%Y%m%d-%H%M%S)
@@ -33,10 +34,10 @@ tar -cf - "${CONTAINER_NAME}/" | pv -s "$(du -sb "${CONTAINER_NAME}/" | awk '{pr
 
 if [ $? -eq 0 ]; then
     echo "Backup completed successfully: ${BACKUP_FILE}"
-    # Keep only the last 5 backups for this container
+    # Keep only the specified number of most recent backups for this container
     cd "${BACKUP_DIR}" || exit
-    ls -t "${CONTAINER_NAME}"-*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm
-    echo "Cleaned up old backups, keeping the 5 most recent"
+    ls -t "${CONTAINER_NAME}"-*.tar.gz 2>/dev/null | tail -n +$((RETENTION + 1)) | xargs -r rm
+    echo "Cleaned up old backups, keeping the ${RETENTION} most recent"
     exit 0
 else
     echo "Error: Backup failed"

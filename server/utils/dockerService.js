@@ -53,9 +53,10 @@ const dockerService = {
    * Run a command on a container based on action type
    * @param {string} containerName - Name of the container
    * @param {string} command - Command type (start, stop, restart) or custom command
+   * @param {Object} options - Additional options for the command
    * @returns {Promise<string>} - Command output
    */
-  async runCommand(containerName, command) {
+  async runCommand(containerName, command, options = {}) {
     try {
       // Handle standard docker commands directly
       if (['start', 'stop', 'restart'].includes(command)) {
@@ -71,14 +72,18 @@ const dockerService = {
       // Special case for backup - using internal backup script
       else if (command === 'backup') {
         try {
+          // Get server configuration for retention setting
+          const server = await GameServer.findOne({ containerName });
+          const retention = server?.backupSchedule?.retention || 5;
+
           // Stop the container first
           console.log(`Stopping container ${containerName} before backup...`);
           await this.stopContainer(containerName);
 
-          // Execute backup using the internal script
+          // Execute backup using the internal script with retention setting
           const backupScript = '/app/scripts/backup_container.sh';
           console.log(`Executing backup script for ${containerName}...`);
-          const { stdout, stderr } = await execPromise(`${backupScript} ${containerName}`);
+          const { stdout, stderr } = await execPromise(`${backupScript} ${containerName} ${retention}`);
           
           if (stderr) {
             console.warn(`Backup warning for ${containerName}:`, stderr);

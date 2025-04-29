@@ -3,6 +3,7 @@ const router = express.Router();
 const GameServer = require('../models/GameServer');
 const User = require('../models/User');
 const dockerService = require('../utils/dockerService');
+const backupScheduler = require('../utils/backupScheduler');
 
 // Middleware to check if user is authenticated and an admin
 const isAdmin = (req, res, next) => {
@@ -303,6 +304,90 @@ router.get('/servers/:id/logs', isAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error fetching container logs:', error);
     res.status(500).json({ message: 'Failed to retrieve logs' });
+  }
+});
+
+// @route   PUT /api/admin/servers/:id/backup-schedule
+// @desc    Update backup schedule for a game server
+// @access  Admin only
+router.put('/servers/:id/backup-schedule', isAdmin, async (req, res) => {
+  try {
+    const { enabled, cronExpression, retention } = req.body;
+    
+    const gameServer = await GameServer.findById(req.params.id);
+    if (!gameServer) {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+
+    // Validate cron expression if provided
+    if (cronExpression && !require('node-cron').validate(cronExpression)) {
+      return res.status(400).json({ message: 'Invalid cron expression' });
+    }
+
+    // Update backup schedule
+    gameServer.backupSchedule = {
+      ...gameServer.backupSchedule,
+      enabled: enabled ?? gameServer.backupSchedule.enabled,
+      cronExpression: cronExpression ?? gameServer.backupSchedule.cronExpression,
+      retention: retention ?? gameServer.backupSchedule.retention
+    };
+
+    await gameServer.save();
+
+    // Update scheduler
+    if (gameServer.backupSchedule.enabled) {
+      backupScheduler.updateJob(gameServer);
+    } else {
+      backupScheduler.stopJob(gameServer._id.toString());
+    }
+
+    res.json({
+      message: 'Backup schedule updated successfully',
+      backupSchedule: gameServer.backupSchedule
+    });
+  } catch (error) {
+    console.error('Error updating backup schedule:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/servers/:id/backup-status
+// @desc    Get backup status and history for a game server
+// @access  Admin only
+router.get('/servers/:id/backup-status', isAdmin, async (req, res) => {
+  try {
+    const gameServer = await GameServer.findById(req.params.id);
+    if (!gameServer) {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+
+    // Get list of existing backups for this server
+    const backupPath = '/app/backups';
+    const { stdout: backupFiles } = await require('util').promisify(require('child_process').exec)(
+      `ls -t ${backupPath}/${gameServer.containerName}-*.tar.gz 2>/dev/null || true`
+    );
+
+    const backups = backupFiles.trim().split('\n')
+      .filter(file => file) // Remove empty lines
+      .map(file => {
+        const match = file.match(/(\d{8}-\d{6})\.tar\.gz$/);
+        return match ? {
+          filename: file.split('/').pop(),
+          timestamp: match[1],
+          date: new Date(
+            match[1].replace(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3T$4:$5:$6Z')
+          )
+        } : null;
+      })
+      .filter(backup => backup); // Remove null entries
+
+    res.json({
+      backupSchedule: gameServer.backupSchedule,
+      backups
+    });
+  } catch (error) {
+    console.error('Error getting backup status:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

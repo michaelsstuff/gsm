@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Container, Row, Col, Card, Badge, Button, Spinner, Alert, Modal } from 'react-bootstrap';
+import { Container, Row, Col, Card, Badge, Button, Spinner, Alert, Modal, Form } from 'react-bootstrap';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 
@@ -24,12 +24,25 @@ const ServerDetail = () => {
   const [backupOutput, setBackupOutput] = useState('');
   const [backupInProgress, setBackupInProgress] = useState(false);
 
+  // State for backup schedule management
+  const [showBackupSchedule, setShowBackupSchedule] = useState(false);
+  const [backupScheduleForm, setBackupScheduleForm] = useState({
+    enabled: false,
+    cronExpression: '0 0 * * *',
+    retention: 5
+  });
+  const [backupHistory, setBackupHistory] = useState([]);
+  const [loadingBackupStatus, setLoadingBackupStatus] = useState(false);
+
   useEffect(() => {
     const fetchServer = async () => {
       try {
         const res = await axios.get(`/api/servers/${id}`);
         setServer(res.data);
         setLoading(false);
+        if (isAdmin) {
+          loadBackupStatus();
+        }
       } catch (err) {
         console.error('Error fetching server details:', err);
         setError('Failed to load server details. Please try again later.');
@@ -38,7 +51,7 @@ const ServerDetail = () => {
     };
 
     fetchServer();
-  }, [id]);
+  }, [id, isAdmin]);
 
   useEffect(() => {
     // Refresh server status periodically
@@ -159,6 +172,47 @@ const ServerDetail = () => {
     setLogLines(parseInt(e.target.value, 10));
   };
 
+  // Load backup status and history
+  const loadBackupStatus = async () => {
+    if (!isAdmin) return;
+    
+    try {
+      setLoadingBackupStatus(true);
+      const res = await axios.get(`/api/admin/servers/${id}/backup-status`);
+      const { backupSchedule, backups } = res.data;
+      
+      setBackupScheduleForm({
+        enabled: backupSchedule?.enabled || false,
+        cronExpression: backupSchedule?.cronExpression || '0 0 * * *',
+        retention: backupSchedule?.retention || 5
+      });
+      setBackupHistory(backups);
+      setLoadingBackupStatus(false);
+    } catch (err) {
+      console.error('Error loading backup status:', err);
+      setError('Failed to load backup status');
+      setLoadingBackupStatus(false);
+    }
+  };
+
+  const handleSaveBackupSchedule = async () => {
+    try {
+      setLoading(true);
+      await axios.put(`/api/admin/servers/${id}/backup-schedule`, backupScheduleForm);
+      await loadBackupStatus();
+      setShowBackupSchedule(false);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error saving backup schedule:', err);
+      setError('Failed to save backup schedule');
+      setLoading(false);
+    }
+  };
+
+  const formatBackupDate = (date) => {
+    return new Date(date).toLocaleString();
+  };
+
   if (loading && !server) {
     return (
       <Container className="text-center mt-5">
@@ -277,6 +331,13 @@ const ServerDetail = () => {
                     disabled={loading}
                   >
                     Backup Server
+                  </Button>
+                  <Button 
+                    variant="primary"
+                    onClick={() => setShowBackupSchedule(true)}
+                    disabled={loading}
+                  >
+                    Manage Backup Schedule
                   </Button>
                   <Button 
                     variant="secondary" 
@@ -451,6 +512,140 @@ const ServerDetail = () => {
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowBackupOutput(false)}>
             Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Backup Schedule Modal */}
+      <Modal show={showBackupSchedule} onHide={() => setShowBackupSchedule(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Backup Schedule - {server?.name}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Check
+                type="switch"
+                id="backup-enabled"
+                label="Enable Scheduled Backups"
+                checked={backupScheduleForm.enabled}
+                onChange={e => setBackupScheduleForm({
+                  ...backupScheduleForm,
+                  enabled: e.target.checked
+                })}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Backup Schedule (Cron Expression)</Form.Label>
+              <Form.Control
+                type="text"
+                value={backupScheduleForm.cronExpression}
+                onChange={e => setBackupScheduleForm({
+                  ...backupScheduleForm,
+                  cronExpression: e.target.value
+                })}
+                placeholder="0 0 * * *"
+              />
+              <Form.Text className="text-muted">
+                Format: minute hour day month weekday (e.g., "0 0 * * *" for daily at midnight)
+              </Form.Text>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Retention (Number of backups to keep)</Form.Label>
+              <Form.Control
+                type="number"
+                value={backupScheduleForm.retention}
+                onChange={e => setBackupScheduleForm({
+                  ...backupScheduleForm,
+                  retention: parseInt(e.target.value, 10)
+                })}
+                min="1"
+                max="30"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Common Schedules:</Form.Label>
+              <div className="mb-2">
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  className="me-2 mb-2"
+                  onClick={() => setBackupScheduleForm({
+                    ...backupScheduleForm,
+                    cronExpression: '0 0 * * *'
+                  })}
+                >
+                  Daily at midnight
+                </Button>
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  className="me-2 mb-2"
+                  onClick={() => setBackupScheduleForm({
+                    ...backupScheduleForm,
+                    cronExpression: '0 0 * * 0'
+                  })}
+                >
+                  Weekly on Sunday
+                </Button>
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  className="me-2 mb-2"
+                  onClick={() => setBackupScheduleForm({
+                    ...backupScheduleForm,
+                    cronExpression: '0 0 1 * *'
+                  })}
+                >
+                  Monthly
+                </Button>
+              </div>
+              <Form.Text className="text-muted">
+                Click a button to set a common schedule, or enter a custom cron expression.
+              </Form.Text>
+            </Form.Group>
+
+            {backupHistory.length > 0 && (
+              <>
+                <h5 className="mt-4">Backup Status</h5>
+                {server?.backupSchedule?.lastBackup && (
+                  <p className="text-success mb-2">
+                    Last successful backup: {formatBackupDate(server.backupSchedule.lastBackup)}
+                  </p>
+                )}
+                {server?.backupSchedule?.lastError && (
+                  <Alert variant="warning" className="mb-3">
+                    <small>
+                      Last error ({formatBackupDate(server.backupSchedule.lastError.date)}):
+                      <br />
+                      {server.backupSchedule.lastError.message}
+                    </small>
+                  </Alert>
+                )}
+                <h6>Backup History</h6>
+                <div className="backup-history" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                  {backupHistory.map((backup, index) => (
+                    <div key={index} className="backup-entry p-2 border-bottom">
+                      <small className="text-muted">
+                        {formatBackupDate(backup.date)}
+                      </small>
+                      <div>{backup.filename}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowBackupSchedule(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleSaveBackupSchedule} disabled={loading}>
+            Save Schedule
           </Button>
         </Modal.Footer>
       </Modal>

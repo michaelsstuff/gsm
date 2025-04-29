@@ -6,6 +6,7 @@ const MongoStore = require('connect-mongo');
 const passport = require('passport');
 const path = require('path');
 const dotenv = require('dotenv');
+const backupScheduler = require('./utils/backupScheduler');
 
 // Load environment variables
 dotenv.config();
@@ -62,7 +63,13 @@ if (process.env.NODE_ENV === 'production') {
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/gameserver-manager')
-  .then(() => console.log('MongoDB connected'))
+  .then(() => {
+    console.log('MongoDB connected');
+    // Initialize backup scheduler after DB connection
+    backupScheduler.initializeJobs().catch(err => {
+      console.error('Failed to initialize backup scheduler:', err);
+    });
+  })
   .catch(err => console.error('MongoDB connection error:', err));
 
 // Start server

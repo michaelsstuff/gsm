@@ -6,7 +6,8 @@ RUN apk add --no-cache \
     bash \
     tar \
     gzip \
-    pv
+    pv \
+    coreutils
 
 WORKDIR /app
 
@@ -19,8 +20,8 @@ RUN npm install --production
 # Copy the rest of the application
 COPY . .
 
-# Make backup script executable
-RUN chmod +x /app/scripts/backup_container.sh
+# Make scripts executable
+RUN chmod +x /app/scripts/*.sh
 
 # Create necessary directories
 RUN mkdir -p /app/backups
