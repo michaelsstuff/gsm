@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Badge, Button, Spinner, Alert, Modal, Form } from 'react-bootstrap';
 import axios from 'axios';
@@ -12,6 +12,7 @@ const ServerDetail = () => {
   const [statusRefresh, setStatusRefresh] = useState(0);
   const { isAuthenticated, user } = useAuth();
   const isAdmin = isAuthenticated && user?.role === 'admin';
+  const isMounted = useRef(true); // Add ref to track mounted state
 
   // State for logs functionality
   const [showLogs, setShowLogs] = useState(false);
@@ -34,19 +35,30 @@ const ServerDetail = () => {
   const [backupHistory, setBackupHistory] = useState([]);
   const [loadingBackupStatus, setLoadingBackupStatus] = useState(false);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMounted.current = false; // Set mounted ref to false when unmounting
+    };
+  }, []);
+
   useEffect(() => {
     const fetchServer = async () => {
       try {
         const res = await axios.get(`/api/servers/${id}`);
-        setServer(res.data);
-        setLoading(false);
-        if (isAdmin) {
-          loadBackupStatus();
+        if (isMounted.current) {
+          setServer(res.data);
+          setLoading(false);
+          if (isAdmin) {
+            loadBackupStatus();
+          }
         }
       } catch (err) {
         console.error('Error fetching server details:', err);
-        setError('Failed to load server details. Please try again later.');
-        setLoading(false);
+        if (isMounted.current) {
+          setError('Failed to load server details. Please try again later.');
+          setLoading(false);
+        }
       }
     };
 
@@ -59,8 +71,11 @@ const ServerDetail = () => {
       const interval = setInterval(() => {
         const checkStatus = async () => {
           try {
+            if (!isMounted.current) {
+              return; // Don't proceed if unmounted
+            }
             const res = await axios.get(`/api/servers/status/${id}`);
-            if (res.data.status !== server.status) {
+            if (isMounted.current && res.data.status !== server.status) {
               setServer({
                 ...server,
                 status: res.data.status
@@ -74,7 +89,9 @@ const ServerDetail = () => {
         checkStatus();
       }, 10000); // Check every 10 seconds
 
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval); // Clear interval on cleanup
+      };
     }
   }, [id, server, statusRefresh]);
 
@@ -95,11 +112,15 @@ const ServerDetail = () => {
           // Set up polling for backup status
           const pollBackupStatus = async () => {
             try {
+              if (!isMounted.current) {
+                return; // Don't proceed if unmounted
+              }
+              
               const statusRes = await axios.get(`/api/admin/servers/${id}/backup-job`);
               const { activeBackupJob, serverStatus } = statusRes.data;
               
               // Update server status if changed
-              if (serverStatus !== server.status) {
+              if (isMounted.current && serverStatus !== server.status) {
                 setServer({
                   ...server,
                   status: serverStatus
@@ -108,32 +129,40 @@ const ServerDetail = () => {
               
               if (!activeBackupJob || !activeBackupJob.inProgress) {
                 // Backup completed or failed
-                setBackupInProgress(false);
-                
-                if (activeBackupJob && activeBackupJob.status === 'failed') {
-                  setBackupOutput(activeBackupJob.message || 'Backup failed with an unknown error');
-                  setError(`Failed to backup server. ${activeBackupJob.message || 'Unknown error occurred'}`);
-                } else {
-                  setBackupOutput(activeBackupJob?.message || 'Backup completed successfully');
+                if (isMounted.current) {
+                  setBackupInProgress(false);
+                  
+                  if (activeBackupJob && activeBackupJob.status === 'failed') {
+                    setBackupOutput(activeBackupJob.message || 'Backup failed with an unknown error');
+                    setError(`Failed to backup server. ${activeBackupJob.message || 'Unknown error occurred'}`);
+                  } else {
+                    setBackupOutput(activeBackupJob?.message || 'Backup completed successfully');
+                  }
+                  
+                  // Refresh backup status
+                  await loadBackupStatus();
                 }
-                
-                // Refresh backup status
-                await loadBackupStatus();
                 return;
               }
               
               // Update status message while backup is still in progress
-              setBackupOutput(
-                activeBackupJob.message || 
-                'Backup in progress...\n\nThe server will remain stopped until the backup completes.\nThis process may take several minutes for large servers.'
-              );
+              if (isMounted.current) {
+                setBackupOutput(
+                  activeBackupJob.message || 
+                  'Backup in progress...\n\nThe server will remain stopped until the backup completes.\nThis process may take several minutes for large servers.'
+                );
               
-              // Continue polling
-              setTimeout(pollBackupStatus, 3000);
+                // Continue polling only if still mounted
+                if (isMounted.current) {
+                  setTimeout(pollBackupStatus, 3000);
+                }
+              }
             } catch (err) {
               console.error('Error polling backup status:', err);
-              setBackupInProgress(false);
-              setBackupOutput(`Error checking backup status: ${err.message || 'Unknown error'}`);
+              if (isMounted.current) {
+                setBackupInProgress(false);
+                setBackupOutput(`Error checking backup status: ${err.message || 'Unknown error'}`);
+              }
             }
           };
           
@@ -141,8 +170,10 @@ const ServerDetail = () => {
           pollBackupStatus();
         } else {
           // Handle immediate completion (rare)
-          setBackupOutput(response.data.result || 'Backup completed successfully');
-          setBackupInProgress(false);
+          if (isMounted.current) {
+            setBackupOutput(response.data.result || 'Backup completed successfully');
+            setBackupInProgress(false);
+          }
         }
       } else {
         // Handle other commands (start, stop, restart) synchronously
@@ -150,14 +181,18 @@ const ServerDetail = () => {
         
         // Trigger an immediate status refresh
         const res = await axios.get(`/api/servers/status/${id}`);
-        setServer({
-          ...server,
-          status: res.data.status
-        });
+        if (isMounted.current) {
+          setServer({
+            ...server,
+            status: res.data.status
+          });
+        }
       }
       
-      setStatusRefresh(prev => prev + 1);
-      setLoading(false);
+      if (isMounted.current) {
+        setStatusRefresh(prev => prev + 1);
+        setLoading(false);
+      }
     } catch (err) {
       console.error(`Error running ${command} command:`, err);
       
@@ -168,9 +203,11 @@ const ServerDetail = () => {
         // Handle conflict (backup already in progress)
         if (err.response.status === 409 && command === 'backup') {
           const jobStatus = err.response.data?.jobStatus;
-          setBackupInProgress(true);
-          setBackupOutput(`A backup operation is already in progress.\nStarted at: ${new Date(jobStatus?.startedAt).toLocaleString()}\nStatus: ${jobStatus?.status}\nMessage: ${jobStatus?.message || 'In progress...'}`);
-          setLoading(false);
+          if (isMounted.current) {
+            setBackupInProgress(true);
+            setBackupOutput(`A backup operation is already in progress.\nStarted at: ${new Date(jobStatus?.startedAt).toLocaleString()}\nStatus: ${jobStatus?.status}\nMessage: ${jobStatus?.message || 'In progress...'}`);
+            setLoading(false);
+          }
           return;
         }
         
@@ -185,12 +222,14 @@ const ServerDetail = () => {
         errorMessage = err.message;
       }
       
-      setError(`Failed to ${command} server. ${errorMessage}`);
-      setLoading(false);
-      
-      if (command === 'backup') {
-        setBackupInProgress(false);
-        setBackupOutput(`Backup failed: ${errorMessage}`);
+      if (isMounted.current) {
+        setError(`Failed to ${command} server. ${errorMessage}`);
+        setLoading(false);
+        
+        if (command === 'backup') {
+          setBackupInProgress(false);
+          setBackupOutput(`Backup failed: ${errorMessage}`);
+        }
       }
     }
   };
@@ -223,34 +262,38 @@ const ServerDetail = () => {
     try {
       setLoadingLogs(true);
       const res = await axios.get(`/api/admin/servers/${id}/logs?lines=${logLines}`);
-      setLogs(res.data.logs);
-      setLoadingLogs(false);
+      if (isMounted.current) {
+        setLogs(res.data.logs);
+        setLoadingLogs(false);
+      }
     } catch (err) {
       console.error('Error fetching logs:', err);
-      setError(`Failed to fetch logs: ${err.response?.data?.message || 'Unknown error'}`);
-      setLoadingLogs(false);
+      if (isMounted.current) {
+        setError(`Failed to fetch logs: ${err.response?.data?.message || 'Unknown error'}`);
+        setLoadingLogs(false);
+      }
     }
   };
 
-  // Handle showing logs
+  // Handler for opening logs modal
   const handleShowLogs = () => {
     setShowLogs(true);
     fetchLogs();
   };
 
-  // Handle closing logs modal
+  // Handler for closing logs modal
   const handleCloseLogs = () => {
     setShowLogs(false);
   };
 
-  // Handle refreshing logs
-  const handleRefreshLogs = () => {
-    fetchLogs();
+  // Handler for changing number of log lines
+  const handleLogLinesChange = (e) => {
+    setLogLines(Number(e.target.value));
   };
 
-  // Handle changing log lines count
-  const handleLogLinesChange = (e) => {
-    setLogLines(parseInt(e.target.value, 10));
+  // Handler for refreshing logs
+  const handleRefreshLogs = () => {
+    fetchLogs();
   };
 
   // Load backup status and history
@@ -260,19 +303,23 @@ const ServerDetail = () => {
     try {
       setLoadingBackupStatus(true);
       const res = await axios.get(`/api/admin/servers/${id}/backup-status`);
-      const { backupSchedule, backups } = res.data;
-      
-      setBackupScheduleForm({
-        enabled: backupSchedule?.enabled || false,
-        cronExpression: backupSchedule?.cronExpression || '0 0 * * *',
-        retention: backupSchedule?.retention || 5
-      });
-      setBackupHistory(backups);
-      setLoadingBackupStatus(false);
+      if (isMounted.current) {
+        const { backupSchedule, backups } = res.data;
+        
+        setBackupScheduleForm({
+          enabled: backupSchedule?.enabled || false,
+          cronExpression: backupSchedule?.cronExpression || '0 0 * * *',
+          retention: backupSchedule?.retention || 5
+        });
+        setBackupHistory(backups);
+        setLoadingBackupStatus(false);
+      }
     } catch (err) {
       console.error('Error loading backup status:', err);
-      setError('Failed to load backup status');
-      setLoadingBackupStatus(false);
+      if (isMounted.current) {
+        setError('Failed to load backup status');
+        setLoadingBackupStatus(false);
+      }
     }
   };
 
@@ -280,13 +327,17 @@ const ServerDetail = () => {
     try {
       setLoading(true);
       await axios.put(`/api/admin/servers/${id}/backup-schedule`, backupScheduleForm);
-      await loadBackupStatus();
-      setShowBackupSchedule(false);
-      setLoading(false);
+      if (isMounted.current) {
+        await loadBackupStatus();
+        setShowBackupSchedule(false);
+        setLoading(false);
+      }
     } catch (err) {
       console.error('Error saving backup schedule:', err);
-      setError(err.response?.data?.message || 'Failed to save backup schedule');
-      setLoading(false);
+      if (isMounted.current) {
+        setError(err.response?.data?.message || 'Failed to save backup schedule');
+        setLoading(false);
+      }
     }
   };
 
