@@ -513,4 +513,286 @@ router.get('/servers/:id/backup-job', isAdmin, async (req, res) => {
   }
 });
 
+// @route   GET /api/admin/servers/:id/files
+// @desc    Get file listing for a game server container
+// @access  Admin only
+router.get('/servers/:id/files', isAdmin, async (req, res) => {
+  try {
+    const { path } = req.query;
+    const gameServer = await GameServer.findById(req.params.id);
+    
+    if (!gameServer) {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+    
+    // Get directory contents using docker exec
+    const containerName = gameServer.containerName;
+    let dirPath = path || '/';
+    
+    // Normalize path to prevent directory traversal
+    dirPath = require('path').normalize(dirPath).replace(/^(\.\.[\/\\])+/, '');
+    
+    console.log(`Listing directory ${dirPath} in container ${containerName}`);
+    
+    try {
+      // First check if the container is running
+      const { stdout: containerStatus } = await require('util').promisify(require('child_process').exec)(
+        `docker container inspect -f '{{.State.Status}}' ${containerName}`
+      );
+      
+      if (containerStatus.trim() !== 'running') {
+        return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
+      }
+      
+      // Get directory listing with a simplified approach using find
+      const { stdout, stderr } = await require('util').promisify(require('child_process').exec)(
+        `docker exec ${containerName} /bin/sh -c "cd '${dirPath}' && ls -la | grep -v '^total'"`
+      );
+      
+      if (stderr && !stderr.includes('No such file or directory')) {
+        console.error('Error listing directory:', stderr);
+        return res.status(500).json({ message: 'Failed to list directory contents: ' + stderr });
+      }
+      
+      // Parse ls output to get file listing
+      const lines = stdout.split('\n').filter(line => line.trim() !== '');
+      const files = [];
+      
+      for (const line of lines) {
+        try {
+          const parts = line.trim().split(/\s+/);
+          if (parts.length < 9) continue;
+          
+          const permissions = parts[0];
+          const size = parts[4];
+          // The filename might contain spaces, so we need to join all parts after the date and time (position 8)
+          const name = parts.slice(8).join(' ');
+          const isDirectory = permissions.startsWith('d');
+          
+          // Skip current and parent directory references
+          if (name === '.' || name === '..') continue;
+          
+          files.push({
+            name,
+            isDirectory,
+            permissions,
+            size,
+            path: require('path').join(dirPath, name)
+          });
+        } catch (err) {
+          console.error('Error parsing file entry:', err, line);
+        }
+      }
+      
+      res.json({
+        path: dirPath,
+        files
+      });
+    } catch (execError) {
+      console.error('Docker exec error:', execError);
+      const errorMessage = execError.stderr || execError.message || 'Unknown Docker error';
+      return res.status(500).json({ message: 'Failed to execute Docker command: ' + errorMessage });
+    }
+  } catch (error) {
+    console.error('Error getting file listing:', error);
+    res.status(500).json({ message: 'Failed to get file listing: ' + error.message });
+  }
+});
+
+// @route   GET /api/admin/servers/:id/files/content
+// @desc    Get file content from a game server container
+// @access  Admin only
+router.get('/servers/:id/files/content', isAdmin, async (req, res) => {
+  try {
+    const { path } = req.query;
+    const gameServer = await GameServer.findById(req.params.id);
+    
+    if (!gameServer) {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+    
+    if (!path) {
+      return res.status(400).json({ message: 'File path is required' });
+    }
+    
+    // Normalize path to prevent directory traversal
+    const filePath = require('path').normalize(path).replace(/^(\.\.[\/\\])+/, '');
+    const containerName = gameServer.containerName;
+    
+    console.log(`Getting file content for ${filePath} in container ${containerName}`);
+    
+    try {
+      // First check if the container is running
+      const { stdout: containerStatus } = await require('util').promisify(require('child_process').exec)(
+        `docker container inspect -f '{{.State.Status}}' ${containerName}`
+      );
+      
+      if (containerStatus.trim() !== 'running') {
+        return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
+      }
+      
+      // Check if file exists and is not a directory
+      const { stdout: fileType, stderr: fileTypeErr } = await require('util').promisify(require('child_process').exec)(
+        `docker exec ${containerName} /bin/sh -c "[ -f '${filePath}' ] && echo 'file' || echo 'not-file'"`
+      );
+      
+      if (fileType.trim() !== 'file') {
+        console.error('File type check error:', fileTypeErr);
+        return res.status(400).json({ message: 'Not a file or file does not exist' });
+      }
+      
+      // Get file content
+      const { stdout, stderr } = await require('util').promisify(require('child_process').exec)(
+        `docker exec ${containerName} cat "${filePath}"`
+      );
+      
+      if (stderr) {
+        console.error('Error reading file:', stderr);
+        return res.status(500).json({ message: 'Failed to read file content: ' + stderr });
+      }
+      
+      res.json({
+        path: filePath,
+        content: stdout
+      });
+    } catch (execError) {
+      console.error('Docker exec error:', execError);
+      const errorMessage = execError.stderr || execError.message || 'Unknown Docker error';
+      return res.status(500).json({ message: 'Failed to execute Docker command: ' + errorMessage });
+    }
+  } catch (error) {
+    console.error('Error getting file content:', error);
+    res.status(500).json({ message: 'Failed to get file content: ' + error.message });
+  }
+});
+
+// @route   POST /api/admin/servers/:id/files/save
+// @desc    Save file content to a game server container
+// @access  Admin only
+router.post('/servers/:id/files/save', isAdmin, async (req, res) => {
+  try {
+    const { path, content } = req.body;
+    const gameServer = await GameServer.findById(req.params.id);
+    
+    if (!gameServer) {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+    
+    if (!path) {
+      return res.status(400).json({ message: 'File path is required' });
+    }
+    
+    if (content === undefined) {
+      return res.status(400).json({ message: 'File content is required' });
+    }
+    
+    // Normalize path to prevent directory traversal
+    const filePath = require('path').normalize(path).replace(/^(\.\.[\/\\])+/, '');
+    const containerName = gameServer.containerName;
+    
+    console.log(`Saving file content to ${filePath} in container ${containerName}`);
+    
+    try {
+      // First check if the container is running
+      const { stdout: containerStatus } = await require('util').promisify(require('child_process').exec)(
+        `docker container inspect -f '{{.State.Status}}' ${containerName}`
+      );
+      
+      if (containerStatus.trim() !== 'running') {
+        return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
+      }
+      
+      // Create a temporary file and copy it to the container
+      const tempFile = `/tmp/gsm-file-edit-${Date.now()}`;
+      await require('fs').promises.writeFile(tempFile, content);
+      
+      try {
+        await require('util').promisify(require('child_process').exec)(
+          `docker cp ${tempFile} ${containerName}:${filePath}`
+        );
+        
+        // Clean up temp file
+        await require('fs').promises.unlink(tempFile);
+        
+        res.json({
+          message: 'File saved successfully',
+          path: filePath
+        });
+      } catch (err) {
+        console.error('Error saving file:', err);
+        // Clean up temp file
+        try {
+          await require('fs').promises.unlink(tempFile);
+        } catch (unlinkErr) {
+          console.error('Error removing temp file:', unlinkErr);
+        }
+        
+        return res.status(500).json({ message: 'Failed to save file: ' + (err.stderr || err.message) });
+      }
+    } catch (execError) {
+      console.error('Docker exec error:', execError);
+      const errorMessage = execError.stderr || execError.message || 'Unknown Docker error';
+      return res.status(500).json({ message: 'Failed to execute Docker command: ' + errorMessage });
+    }
+  } catch (error) {
+    console.error('Error saving file content:', error);
+    res.status(500).json({ message: 'Failed to save file content: ' + error.message });
+  }
+});
+
+// @route   GET /api/admin/servers/:id/volumes
+// @desc    Get mounted volumes for a game server container
+// @access  Admin only
+router.get('/servers/:id/volumes', isAdmin, async (req, res) => {
+  try {
+    const gameServer = await GameServer.findById(req.params.id);
+    
+    if (!gameServer) {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+    
+    const containerName = gameServer.containerName;
+    
+    try {
+      // First check if the container is running
+      const { stdout: containerStatus } = await require('util').promisify(require('child_process').exec)(
+        `docker container inspect -f '{{.State.Status}}' ${containerName}`
+      );
+      
+      if (containerStatus.trim() !== 'running') {
+        return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
+      }
+      
+      // Get the container's mount points
+      const { stdout } = await require('util').promisify(require('child_process').exec)(
+        `docker inspect --format '{{json .Mounts}}' ${containerName}`
+      );
+      
+      // Parse the JSON output
+      let mounts = JSON.parse(stdout);
+      
+      // Filter and format the mounts
+      const volumes = mounts.map(mount => ({
+        name: mount.Name || mount.Source.split('/').pop(),
+        destination: mount.Destination,
+        source: mount.Source,
+        type: mount.Type,
+        mode: mount.Mode,
+        rw: mount.RW
+      }));
+      
+      res.json({
+        volumes
+      });
+    } catch (execError) {
+      console.error('Docker exec error:', execError);
+      const errorMessage = execError.stderr || execError.message || 'Unknown Docker error';
+      return res.status(500).json({ message: 'Failed to get container volumes: ' + errorMessage });
+    }
+  } catch (error) {
+    console.error('Error getting mounted volumes:', error);
+    res.status(500).json({ message: 'Failed to get mounted volumes: ' + error.message });
+  }
+});
+
 module.exports = router;

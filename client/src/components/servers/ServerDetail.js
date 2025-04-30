@@ -478,6 +478,13 @@ const ServerDetail = () => {
                   >
                     View Logs
                   </Button>
+                  <Link 
+                    to={`/admin/servers/${server._id}/files`} 
+                    className="btn btn-secondary d-block"
+                    disabled={loading}
+                  >
+                    Files
+                  </Link>
                 </div>
               </Card.Body>
             </Card>

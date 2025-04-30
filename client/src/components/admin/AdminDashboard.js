@@ -132,7 +132,7 @@ const AdminDashboard = () => {
                   <th>Name</th>
                   <th>Container</th>
                   <th>Status</th>
-                  <th style={{ width: '280px' }}>Actions</th>
+                  <th style={{ width: '340px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -176,6 +176,12 @@ const AdminDashboard = () => {
                           className="btn btn-secondary btn-sm"
                         >
                           Edit
+                        </Link>
+                        <Link
+                          to={`/admin/servers/${server._id}/files`}
+                          className="btn btn-info btn-sm"
+                        >
+                          Files
                         </Link>
                         <Button
                           variant="outline-danger"

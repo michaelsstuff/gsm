@@ -9,6 +9,7 @@ import Register from './components/auth/Register';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ServerForm from './components/admin/ServerForm';
 import UserManagement from './components/admin/UserManagement';
+import FileBrowser from './components/admin/FileBrowser';
 import { useAuth } from './context/AuthContext';
 import './App.css';
 
@@ -66,6 +67,14 @@ const App = () => {
               element={
                 <AdminRoute>
                   <ServerForm />
+                </AdminRoute>
+              } 
+            />
+            <Route 
+              path="/admin/servers/:id/files" 
+              element={
+                <AdminRoute>
+                  <FileBrowser />
                 </AdminRoute>
               } 
             />
