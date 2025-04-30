@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   Container, Row, Col, Card, Button, Alert, 
-  Breadcrumb, ListGroup, Spinner, Modal
+  Breadcrumb, ListGroup, Spinner, Modal, Form, ProgressBar
 } from 'react-bootstrap';
 import axios from 'axios';
 import AceEditor from 'react-ace';
@@ -10,7 +10,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faFolder, faFile, faArrowLeft, faSave, 
   faEdit, faTrashAlt, faFolderOpen, faFileCode, 
-  faFileAlt, faHome, faDatabase, faHdd
+  faFileAlt, faHome, faDatabase, faHdd, faUpload
 } from '@fortawesome/free-solid-svg-icons';
 
 // Import ace modes (languages) and themes
@@ -51,6 +51,15 @@ const FileBrowser = () => {
   const [editorTheme, setEditorTheme] = useState('monokai');
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+
+  // File upload state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // File deletion state
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchServerDetails = async () => {
@@ -252,6 +261,83 @@ const FileBrowser = () => {
     }
   };
 
+  const handleFileUpload = async (e) => {
+    e.preventDefault();
+    
+    if (!fileInputRef.current.files.length) {
+      return setError('Please select a file to upload');
+    }
+    
+    try {
+      setIsUploading(true);
+      setUploadProgress(0);
+      
+      const file = fileInputRef.current.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', currentPath);
+      
+      const response = await axios.post(
+        `/api/admin/servers/${id}/files/upload`, 
+        formData, 
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          onUploadProgress: progressEvent => {
+            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(progress);
+          }
+        }
+      );
+      
+      console.log('File uploaded successfully:', response.data);
+      
+      // Show success message
+      setSuccessMessage(`File ${file.name} uploaded successfully!`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+      
+      // Reset upload state
+      setIsUploading(false);
+      setUploadProgress(0);
+      
+      // Close the modal
+      setShowUploadModal(false);
+      
+      // Refresh directory contents
+      await fetchDirectoryContents(currentPath);
+      
+    } catch (err) {
+      console.error('Error uploading file:', err);
+      setError(`Failed to upload file: ${err.response?.data?.message || 'Unknown error'}`);
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteFile = async (file) => {
+    if (!window.confirm(`Are you sure you want to delete ${file.name}?`)) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      await axios.delete(`/api/admin/servers/${id}/files`, {
+        params: { path: file.path }
+      });
+
+      setSuccessMessage(`${file.isDirectory ? 'Directory' : 'File'} ${file.name} deleted successfully!`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+      setIsDeleting(false);
+
+      // Refresh directory contents
+      await fetchDirectoryContents(currentPath);
+    } catch (err) {
+      console.error('Error deleting file:', err);
+      setError(`Failed to delete file: ${err.response?.data?.message || 'Unknown error'}`);
+      setIsDeleting(false);
+    }
+  };
+
   const closeEditor = () => {
     setShowEditor(false);
     setCurrentFile(null);
@@ -322,25 +408,38 @@ const FileBrowser = () => {
 
       <Card className="mb-4">
         <Card.Header>
-          <Breadcrumb>
-            {breadcrumbs.map((crumb, index) => (
-              <Breadcrumb.Item 
-                key={index}
-                active={index === breadcrumbs.length - 1}
-                onClick={() => handleBreadcrumbClick(crumb)}
-                linkAs="button"
-                className="text-decoration-none border-0 bg-transparent p-0"
+          <div className="d-flex justify-content-between align-items-center">
+            <Breadcrumb>
+              {breadcrumbs.map((crumb, index) => (
+                <Breadcrumb.Item 
+                  key={index}
+                  active={index === breadcrumbs.length - 1}
+                  onClick={() => handleBreadcrumbClick(crumb)}
+                  linkAs="button"
+                  className="text-decoration-none border-0 bg-transparent p-0"
+                >
+                  {index === 0 ? (
+                    <>
+                      <FontAwesomeIcon icon={faHdd} /> {crumb.name}
+                    </>
+                  ) : (
+                    crumb.name
+                  )}
+                </Breadcrumb.Item>
+              ))}
+            </Breadcrumb>
+            
+            {!inVolumesView && selectedVolume && selectedVolume.rw && (
+              <Button 
+                variant="primary" 
+                size="sm"
+                onClick={() => setShowUploadModal(true)}
               >
-                {index === 0 ? (
-                  <>
-                    <FontAwesomeIcon icon={faHdd} /> {crumb.name}
-                  </>
-                ) : (
-                  crumb.name
-                )}
-              </Breadcrumb.Item>
-            ))}
-          </Breadcrumb>
+                <FontAwesomeIcon icon={faUpload} className="me-1" />
+                Upload File
+              </Button>
+            )}
+          </div>
         </Card.Header>
         <Card.Body>
           {loading ? (
@@ -409,13 +508,28 @@ const FileBrowser = () => {
                   {files.map((file, index) => (
                     <ListGroup.Item 
                       key={index}
-                      action
-                      onClick={() => handleFileClick(file)}
+                      className="d-flex justify-content-between align-items-center"
                     >
-                      {getFileIcon(file)}
-                      {file.name}
-                      {!file.isDirectory && (
-                        <small className="text-muted ms-2">({file.size} bytes)</small>
+                      <div 
+                        className="flex-grow-1"
+                        onClick={() => handleFileClick(file)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {getFileIcon(file)}
+                        {file.name}
+                        {!file.isDirectory && (
+                          <small className="text-muted ms-2">({file.size} bytes)</small>
+                        )}
+                      </div>
+                      {selectedVolume.rw && (
+                        <Button 
+                          variant="danger" 
+                          size="sm" 
+                          onClick={() => handleDeleteFile(file)}
+                          disabled={isDeleting}
+                        >
+                          <FontAwesomeIcon icon={faTrashAlt} />
+                        </Button>
                       )}
                     </ListGroup.Item>
                   ))}
@@ -487,6 +601,59 @@ const FileBrowser = () => {
               </Button>
             </div>
           </div>
+        </Modal.Footer>
+      </Modal>
+
+      {/* File Upload Modal */}
+      <Modal 
+        show={showUploadModal} 
+        onHide={() => !isUploading && setShowUploadModal(false)}
+        backdrop="static"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Upload File</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handleFileUpload}>
+            <Form.Group controlId="fileUpload" className="mb-3">
+              <Form.Label>Select File to Upload</Form.Label>
+              <Form.Control 
+                type="file" 
+                ref={fileInputRef}
+                disabled={isUploading}
+              />
+              <Form.Text className="text-muted">
+                File will be uploaded to: {currentPath}
+              </Form.Text>
+            </Form.Group>
+            
+            {isUploading && (
+              <div className="mb-3">
+                <p className="mb-1">Uploading file... {uploadProgress}%</p>
+                <ProgressBar 
+                  now={uploadProgress} 
+                  label={`${uploadProgress}%`} 
+                  animated
+                />
+              </div>
+            )}
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button 
+            variant="secondary" 
+            onClick={() => setShowUploadModal(false)}
+            disabled={isUploading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleFileUpload}
+            disabled={isUploading}
+          >
+            {isUploading ? 'Uploading...' : 'Upload'}
+          </Button>
         </Modal.Footer>
       </Modal>
     </Container>

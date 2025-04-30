@@ -740,6 +740,142 @@ router.post('/servers/:id/files/save', isAdmin, async (req, res) => {
   }
 });
 
+// @route   POST /api/admin/servers/:id/files/upload
+// @desc    Upload a file to a game server container
+// @access  Admin only
+router.post('/servers/:id/files/upload', isAdmin, async (req, res) => {
+  try {
+    if (!req.files || Object.keys(req.files).length === 0) {
+      return res.status(400).json({ message: 'No file was uploaded' });
+    }
+
+    const gameServer = await GameServer.findById(req.params.id);
+    if (!gameServer) {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+
+    // Get upload path and file
+    const uploadPath = req.body.path;
+    const uploadedFile = req.files.file;
+    
+    if (!uploadPath) {
+      return res.status(400).json({ message: 'Upload path is required' });
+    }
+
+    // Normalize path to prevent directory traversal
+    const containerPath = require('path').normalize(uploadPath).replace(/^(\.\.[\/\\])+/, '');
+    const containerName = gameServer.containerName;
+    const filePath = require('path').join(containerPath, uploadedFile.name);
+    
+    console.log(`Uploading file ${uploadedFile.name} to ${filePath} in container ${containerName}`);
+
+    try {
+      // First check if the container is running
+      const { stdout: containerStatus } = await require('util').promisify(require('child_process').exec)(
+        `docker container inspect -f '{{.State.Status}}' ${containerName}`
+      );
+      
+      if (containerStatus.trim() !== 'running') {
+        return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
+      }
+      
+      // Create a temporary file
+      const tempFile = `/tmp/gsm-file-upload-${Date.now()}`;
+      await uploadedFile.mv(tempFile);
+      
+      // Copy the temp file to the container
+      await require('util').promisify(require('child_process').exec)(
+        `docker cp ${tempFile} ${containerName}:${filePath}`
+      );
+      
+      // Clean up temp file
+      await require('fs').promises.unlink(tempFile);
+      
+      res.json({
+        message: 'File uploaded successfully',
+        path: filePath
+      });
+    } catch (err) {
+      console.error('Error uploading file:', err);
+      return res.status(500).json({ message: 'Failed to upload file: ' + (err.stderr || err.message) });
+    }
+  } catch (error) {
+    console.error('Error handling file upload:', error);
+    res.status(500).json({ message: 'Failed to handle file upload: ' + error.message });
+  }
+});
+
+// @route   DELETE /api/admin/servers/:id/files
+// @desc    Delete a file from a game server container
+// @access  Admin only
+router.delete('/servers/:id/files', isAdmin, async (req, res) => {
+  try {
+    const { path } = req.query;
+    const gameServer = await GameServer.findById(req.params.id);
+    
+    if (!gameServer) {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+    
+    if (!path) {
+      return res.status(400).json({ message: 'File path is required' });
+    }
+    
+    // Normalize path to prevent directory traversal
+    const filePath = require('path').normalize(path).replace(/^(\.\.[\/\\])+/, '');
+    const containerName = gameServer.containerName;
+    
+    console.log(`Deleting file ${filePath} in container ${containerName}`);
+    
+    try {
+      // First check if the container is running
+      const { stdout: containerStatus } = await require('util').promisify(require('child_process').exec)(
+        `docker container inspect -f '{{.State.Status}}' ${containerName}`
+      );
+      
+      if (containerStatus.trim() !== 'running') {
+        return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
+      }
+      
+      // Check if file exists
+      const { stdout: fileExists, stderr: fileExistsErr } = await require('util').promisify(require('child_process').exec)(
+        `docker exec ${containerName} /bin/sh -c "[ -e '${filePath}' ] && echo 'exists' || echo 'not-exists'"`
+      );
+      
+      if (fileExists.trim() !== 'exists') {
+        return res.status(400).json({ message: 'File does not exist' });
+      }
+      
+      // Check if it's a directory
+      const { stdout: isDir } = await require('util').promisify(require('child_process').exec)(
+        `docker exec ${containerName} /bin/sh -c "[ -d '${filePath}' ] && echo 'directory' || echo 'file'"`
+      );
+      
+      // Delete the file or directory
+      if (isDir.trim() === 'directory') {
+        await require('util').promisify(require('child_process').exec)(
+          `docker exec ${containerName} /bin/sh -c "rm -rf '${filePath}'"`
+        );
+      } else {
+        await require('util').promisify(require('child_process').exec)(
+          `docker exec ${containerName} /bin/sh -c "rm '${filePath}'"`
+        );
+      }
+      
+      res.json({
+        message: `${isDir.trim() === 'directory' ? 'Directory' : 'File'} deleted successfully`,
+        path: filePath
+      });
+    } catch (err) {
+      console.error('Error deleting file:', err);
+      return res.status(500).json({ message: 'Failed to delete file: ' + (err.stderr || err.message) });
+    }
+  } catch (error) {
+    console.error('Error handling file deletion:', error);
+    res.status(500).json({ message: 'Failed to handle file deletion: ' + error.message });
+  }
+});
+
 // @route   GET /api/admin/servers/:id/volumes
 // @desc    Get mounted volumes for a game server container
 // @access  Admin only

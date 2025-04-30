@@ -6,6 +6,7 @@ const MongoStore = require('connect-mongo');
 const passport = require('passport');
 const path = require('path');
 const dotenv = require('dotenv');
+const fileUpload = require('express-fileupload');
 const backupScheduler = require('./utils/backupScheduler');
 
 // Load environment variables
@@ -26,6 +27,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:3000',
   credentials: true
+}));
+
+// File Upload middleware
+app.use(fileUpload({
+  createParentPath: true,
+  limits: { 
+    fileSize: 100 * 1024 * 1024 // 100MB max file size
+  },
 }));
 
 // Session configuration
