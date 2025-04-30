@@ -70,6 +70,25 @@ const GameServerSchema = new mongoose.Schema({
       })
     }
   },
+  activeBackupJob: {
+    inProgress: { 
+      type: Boolean, 
+      default: false 
+    },
+    startedAt: { 
+      type: Date, 
+      default: null 
+    },
+    status: { 
+      type: String, 
+      enum: ['pending', 'in_progress', 'completed', 'failed', null],
+      default: null
+    },
+    message: { 
+      type: String, 
+      default: null 
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now,

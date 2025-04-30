@@ -234,9 +234,76 @@ router.post('/servers/:id/command', isAdmin, async (req, res) => {
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
     }
-
-    // For standard commands (start, stop, restart, backup), use the command name directly
-    // dockerService now knows to call the external backup script for 'backup'
+    
+    // Handle backup command as a special case with async processing
+    if (command === 'backup') {
+      // Check if a backup is already in progress
+      if (gameServer.activeBackupJob && gameServer.activeBackupJob.inProgress) {
+        return res.status(409).json({ 
+          message: 'A backup operation is already in progress for this server',
+          jobStatus: gameServer.activeBackupJob
+        });
+      }
+      
+      // Initialize backup job status
+      gameServer.activeBackupJob = {
+        inProgress: true,
+        startedAt: new Date(),
+        status: 'pending',
+        message: 'Backup operation starting...'
+      };
+      await gameServer.save();
+      
+      // Return immediately to prevent timeout
+      res.json({ 
+        message: 'Backup initiated successfully',
+        jobStatus: gameServer.activeBackupJob,
+        currentStatus: gameServer.status
+      });
+      
+      // Run backup in background
+      (async () => {
+        try {
+          // Update job status
+          gameServer.activeBackupJob.status = 'in_progress';
+          gameServer.activeBackupJob.message = 'Stopping server and creating backup...';
+          await gameServer.save();
+          
+          // Execute backup
+          const result = await dockerService.runCommand(gameServer.containerName, command);
+          
+          // Update server and job status after successful backup
+          gameServer.activeBackupJob.inProgress = false;
+          gameServer.activeBackupJob.status = 'completed';
+          gameServer.activeBackupJob.message = result || 'Backup completed successfully';
+          gameServer.status = await dockerService.getContainerStatus(gameServer.containerName);
+          gameServer.backupSchedule.lastBackup = new Date();
+          await gameServer.save();
+        } catch (error) {
+          console.error(`Background backup error:`, error);
+          
+          // Update job status on failure
+          const errorMessage = error.stderr || error.message || 'Unknown error occurred';
+          try {
+            gameServer.activeBackupJob.inProgress = false;
+            gameServer.activeBackupJob.status = 'failed';
+            gameServer.activeBackupJob.message = `Backup failed: ${errorMessage}`;
+            gameServer.status = await dockerService.getContainerStatus(gameServer.containerName);
+            gameServer.backupSchedule.lastError = {
+              message: errorMessage,
+              date: new Date()
+            };
+            await gameServer.save();
+          } catch (saveError) {
+            console.error('Error updating backup job status:', saveError);
+          }
+        }
+      })();
+      
+      return;
+    }
+    
+    // For other commands (start, stop, restart), process synchronously
     const result = await dockerService.runCommand(gameServer.containerName, command);
 
     // Update server status after command execution
@@ -250,7 +317,12 @@ router.post('/servers/:id/command', isAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error(`Error running command:`, error);
-    res.status(500).json({ message: 'Server error' });
+    // Include more detailed error information
+    const errorMessage = error.stderr || error.message || 'Unknown error occurred';
+    res.status(500).json({ 
+      message: errorMessage,
+      command: req.body.command
+    });
   }
 });
 
@@ -416,6 +488,27 @@ router.get('/servers/:id/backup-status', isAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Error getting backup status:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/servers/:id/backup-job
+// @desc    Get current backup job status for a game server
+// @access  Admin only
+router.get('/servers/:id/backup-job', isAdmin, async (req, res) => {
+  try {
+    const gameServer = await GameServer.findById(req.params.id);
+    if (!gameServer) {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+
+    // Return the current backup job status
+    res.json({
+      activeBackupJob: gameServer.activeBackupJob,
+      serverStatus: gameServer.status
+    });
+  } catch (error) {
+    console.error('Error getting backup job status:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

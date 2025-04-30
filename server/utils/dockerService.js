@@ -99,8 +99,14 @@ const dockerService = {
           console.log(`Ensuring container ${containerName} is started after error...`);
           await this.startContainer(containerName);
 
-          console.error('Backup script error:', error.message);
-          throw new Error(`Backup failed: ${error.message}`);
+          console.error('Backup script error:', error);
+          
+          // Extract stderr if available for more detailed error information
+          const errorMessage = error.stderr 
+            ? `Backup failed: ${error.stderr}` 
+            : `Backup failed: ${error.message || 'Unknown error'}`;
+          
+          throw new Error(errorMessage);
         }
       }
       // For other custom commands, run inside the container
@@ -116,7 +122,7 @@ const dockerService = {
       }
     } catch (error) {
       console.error(`Error running command on container ${containerName}:`, error);
-      throw new Error(`Failed to execute command on container: ${error.message}`);
+      throw error; // Pass the original error with all its properties
     }
   },
 

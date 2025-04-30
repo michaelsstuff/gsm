@@ -81,35 +81,116 @@ const ServerDetail = () => {
   const handleCommand = async (command) => {
     try {
       setLoading(true);
+      
       if (command === 'backup') {
+        // Start backup with async handling
         setBackupInProgress(true);
-        setBackupOutput('Starting backup process...');
+        setBackupOutput('Starting backup process...\nThis may take several minutes for large servers.\nThe server will be stopped during backup and restarted automatically when complete.');
         setShowBackupOutput(true);
+        
+        // Initiate backup
+        const response = await axios.post(`/api/admin/servers/${id}/command`, { command });
+        
+        if (response.data.jobStatus) {
+          // Set up polling for backup status
+          const pollBackupStatus = async () => {
+            try {
+              const statusRes = await axios.get(`/api/admin/servers/${id}/backup-job`);
+              const { activeBackupJob, serverStatus } = statusRes.data;
+              
+              // Update server status if changed
+              if (serverStatus !== server.status) {
+                setServer({
+                  ...server,
+                  status: serverStatus
+                });
+              }
+              
+              if (!activeBackupJob || !activeBackupJob.inProgress) {
+                // Backup completed or failed
+                setBackupInProgress(false);
+                
+                if (activeBackupJob && activeBackupJob.status === 'failed') {
+                  setBackupOutput(activeBackupJob.message || 'Backup failed with an unknown error');
+                  setError(`Failed to backup server. ${activeBackupJob.message || 'Unknown error occurred'}`);
+                } else {
+                  setBackupOutput(activeBackupJob?.message || 'Backup completed successfully');
+                }
+                
+                // Refresh backup status
+                await loadBackupStatus();
+                return;
+              }
+              
+              // Update status message while backup is still in progress
+              setBackupOutput(
+                activeBackupJob.message || 
+                'Backup in progress...\n\nThe server will remain stopped until the backup completes.\nThis process may take several minutes for large servers.'
+              );
+              
+              // Continue polling
+              setTimeout(pollBackupStatus, 3000);
+            } catch (err) {
+              console.error('Error polling backup status:', err);
+              setBackupInProgress(false);
+              setBackupOutput(`Error checking backup status: ${err.message || 'Unknown error'}`);
+            }
+          };
+          
+          // Start polling
+          pollBackupStatus();
+        } else {
+          // Handle immediate completion (rare)
+          setBackupOutput(response.data.result || 'Backup completed successfully');
+          setBackupInProgress(false);
+        }
+      } else {
+        // Handle other commands (start, stop, restart) synchronously
+        const response = await axios.post(`/api/admin/servers/${id}/command`, { command });
+        
+        // Trigger an immediate status refresh
+        const res = await axios.get(`/api/servers/status/${id}`);
+        setServer({
+          ...server,
+          status: res.data.status
+        });
       }
-      
-      const response = await axios.post(`/api/admin/servers/${id}/command`, { command });
-      
-      if (command === 'backup') {
-        setBackupOutput(response.data.result || 'Backup completed successfully');
-      }
-      
-      // Trigger an immediate status refresh
-      const res = await axios.get(`/api/servers/status/${id}`);
-      setServer({
-        ...server,
-        status: res.data.status
-      });
       
       setStatusRefresh(prev => prev + 1);
       setLoading(false);
-      setBackupInProgress(false);
     } catch (err) {
       console.error(`Error running ${command} command:`, err);
-      setError(`Failed to ${command} server. ${err.response?.data?.message || ''}`);
+      
+      // Extract the most specific error message available
+      let errorMessage = 'Unknown error occurred';
+      
+      if (err.response) {
+        // Handle conflict (backup already in progress)
+        if (err.response.status === 409 && command === 'backup') {
+          const jobStatus = err.response.data?.jobStatus;
+          setBackupInProgress(true);
+          setBackupOutput(`A backup operation is already in progress.\nStarted at: ${new Date(jobStatus?.startedAt).toLocaleString()}\nStatus: ${jobStatus?.status}\nMessage: ${jobStatus?.message || 'In progress...'}`);
+          setLoading(false);
+          return;
+        }
+        
+        // The server responded with an error status
+        if (err.response.data && err.response.data.message) {
+          errorMessage = err.response.data.message;
+        } else if (err.response.statusText) {
+          errorMessage = err.response.statusText;
+        }
+      } else if (err.message) {
+        // No response from server but there's a message property
+        errorMessage = err.message;
+      }
+      
+      setError(`Failed to ${command} server. ${errorMessage}`);
       setLoading(false);
-      setBackupInProgress(false);
+      
       if (command === 'backup') {
-        setBackupOutput(`Backup failed: ${err.response?.data?.message || 'Unknown error'}`);
+        setBackupInProgress(false);
+        setBackupOutput(`Backup failed: ${errorMessage}`);
       }
     }
   };
