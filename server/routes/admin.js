@@ -707,8 +707,9 @@ router.post('/servers/:id/files/save', isAdmin, async (req, res) => {
       await require('fs').promises.writeFile(tempFile, content);
       
       try {
+        // Properly quote the source and destination paths to handle spaces in filenames
         await require('util').promisify(require('child_process').exec)(
-          `docker cp ${tempFile} ${containerName}:${filePath}`
+          `docker cp "${tempFile}" "${containerName}:${filePath}"`
         );
         
         // Clean up temp file
@@ -783,9 +784,9 @@ router.post('/servers/:id/files/upload', isAdmin, async (req, res) => {
       const tempFile = `/tmp/gsm-file-upload-${Date.now()}`;
       await uploadedFile.mv(tempFile);
       
-      // Copy the temp file to the container
+      // Copy the temp file to the container - properly quote the destination to handle spaces in filenames
       await require('util').promisify(require('child_process').exec)(
-        `docker cp ${tempFile} ${containerName}:${filePath}`
+        `docker cp "${tempFile}" "${containerName}:${filePath}"`
       );
       
       // Clean up temp file
