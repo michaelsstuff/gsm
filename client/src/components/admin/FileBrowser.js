@@ -43,6 +43,10 @@ const FileBrowser = () => {
   const [volumes, setVolumes] = useState([]);
   const [inVolumesView, setInVolumesView] = useState(true);
   const [selectedVolume, setSelectedVolume] = useState(null);
+  
+  // File navigation history
+  const [navigationStack, setNavigationStack] = useState([]);
+  const [isHandlingPopState, setIsHandlingPopState] = useState(false);
 
   // Editor state
   const [showEditor, setShowEditor] = useState(false);
@@ -64,6 +68,93 @@ const FileBrowser = () => {
   
   // File download state
   const [isDownloading, setIsDownloading] = useState(false);
+
+  // Set up the popstate event handler
+  useEffect(() => {
+    const handlePopState = (event) => {
+      event.preventDefault();
+      
+      if (isHandlingPopState) return; // Prevent recursive handling
+      setIsHandlingPopState(true);
+      
+      // Get the state that was pushed with history.pushState()
+      const state = event.state;
+      
+      if (state && state.type === 'file_browser') {
+        // If we have state information for the file browser
+        if (state.inVolumesView) {
+          // Go back to volumes view
+          setInVolumesView(true);
+          setSelectedVolume(null);
+          setCurrentPath('');
+        } else if (state.volumePath && state.currentPath) {
+          // Navigate to a specific directory
+          const volume = volumes.find(v => v.destination === state.volumePath);
+          if (volume) {
+            setSelectedVolume(volume);
+            setInVolumesView(false);
+            // Use a callback to handle async navigation
+            fetchDirectoryContents(state.currentPath, true);
+          }
+        }
+      } else {
+        // Default fallback - go to volumes view
+        setInVolumesView(true);
+        setSelectedVolume(null);
+        setCurrentPath('');
+      }
+      
+      // Reset the handling flag after a short delay
+      setTimeout(() => {
+        setIsHandlingPopState(false);
+      }, 100);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    
+    // Initialize browser history with current state if needed
+    if (!window.history.state) {
+      const initialState = {
+        type: 'file_browser',
+        inVolumesView: true,
+        currentPath: '',
+        volumePath: null
+      };
+      window.history.replaceState(initialState, '', window.location.pathname);
+    }
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [volumes]); // Add volumes as a dependency
+
+  // Function to add current location to browser history
+  const addToHistory = (path, volume, replace = false) => {
+    if (isHandlingPopState) return;
+    
+    const state = {
+      type: 'file_browser',
+      inVolumesView: !path,
+      currentPath: path || '',
+      volumePath: volume ? volume.destination : null,
+      timestamp: Date.now() // Add timestamp to ensure state uniqueness
+    };
+    
+    // Method to update browser history
+    const historyMethod = replace ? 'replaceState' : 'pushState';
+    
+    // Add current location to browser history
+    window.history[historyMethod](
+      state,
+      '',
+      `/admin/servers/${id}/files${path ? '?path=' + encodeURIComponent(path) : ''}`
+    );
+    
+    // Also update our internal navigation stack for debugging
+    if (!replace) {
+      setNavigationStack(prev => [...prev, state]);
+    }
+  };
 
   useEffect(() => {
     const fetchServerDetails = async () => {
@@ -88,7 +179,11 @@ const FileBrowser = () => {
       setVolumes(res.data.volumes);
       setInVolumesView(true);
       setSelectedVolume(null);
+      setCurrentPath('');
       setLoading(false);
+      
+      // Add volumes view to browser history
+      addToHistory(null, null, true); // Replace current state
     } catch (err) {
       console.error('Error fetching volumes:', err);
       setError(`Failed to load volumes: ${err.response?.data?.message || 'Unknown error'}`);
@@ -137,7 +232,7 @@ const FileBrowser = () => {
     }
   }, [currentPath, inVolumesView, selectedVolume]);
 
-  const fetchDirectoryContents = async (path) => {
+  const fetchDirectoryContents = async (path, isBackNavigation = false) => {
     try {
       setLoading(true);
       const res = await axios.get(`/api/admin/servers/${id}/files`, {
@@ -155,6 +250,11 @@ const FileBrowser = () => {
       setFiles(sortedFiles);
       setInVolumesView(false);
       setLoading(false);
+      
+      // Add this directory to browser history if not navigating back
+      if (!isBackNavigation && !isHandlingPopState) {
+        addToHistory(res.data.path, selectedVolume);
+      }
     } catch (err) {
       console.error('Error fetching directory contents:', err);
       setError(`Failed to load directory contents: ${err.response?.data?.message || 'Unknown error'}`);
@@ -172,7 +272,6 @@ const FileBrowser = () => {
       // Navigate to directory
       fetchDirectoryContents(file.path);
     } else {
-      // Open file
       try {
         setLoading(true);
         const res = await axios.get(`/api/admin/servers/${id}/files/content`, {
@@ -242,6 +341,9 @@ const FileBrowser = () => {
       setInVolumesView(true);
       setSelectedVolume(null);
       setCurrentPath('');
+      
+      // Add volumes view to browser history
+      addToHistory(null, null);
     } else {
       fetchDirectoryContents(crumb.path);
     }
