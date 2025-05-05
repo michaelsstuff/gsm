@@ -10,7 +10,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faFolder, faFile, faArrowLeft, faSave, 
   faEdit, faTrashAlt, faFolderOpen, faFileCode, 
-  faFileAlt, faHome, faDatabase, faHdd, faUpload
+  faFileAlt, faHome, faDatabase, faHdd, faUpload,
+  faDownload
 } from '@fortawesome/free-solid-svg-icons';
 
 // Import ace modes (languages) and themes
@@ -60,6 +61,9 @@ const FileBrowser = () => {
 
   // File deletion state
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // File download state
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     const fetchServerDetails = async () => {
@@ -338,6 +342,47 @@ const FileBrowser = () => {
     }
   };
 
+  const handleDownloadFile = async (file, e) => {
+    // Stop propagation to prevent navigating into file/directory
+    e.stopPropagation();
+    
+    if (file.isDirectory) {
+      return setError("Cannot download directories. Please navigate into the directory and download individual files.");
+    }
+    
+    try {
+      setIsDownloading(true);
+      
+      // Request the file with responseType blob to handle binary data
+      const response = await axios.get(`/api/admin/servers/${id}/files/download`, {
+        params: { path: file.path },
+        responseType: 'blob'
+      });
+      
+      // Create a blob URL from the response data
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      
+      // Create a temporary anchor element to trigger the download
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', file.name);
+      document.body.appendChild(link);
+      
+      // Trigger the download
+      link.click();
+      
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+      
+      setIsDownloading(false);
+    } catch (err) {
+      console.error('Error downloading file:', err);
+      setError(`Failed to download file: ${err.response?.data?.message || 'Unknown error'}`);
+      setIsDownloading(false);
+    }
+  };
+
   const closeEditor = () => {
     setShowEditor(false);
     setCurrentFile(null);
@@ -522,14 +567,25 @@ const FileBrowser = () => {
                         )}
                       </div>
                       {selectedVolume.rw && (
-                        <Button 
-                          variant="danger" 
-                          size="sm" 
-                          onClick={() => handleDeleteFile(file)}
-                          disabled={isDeleting}
-                        >
-                          <FontAwesomeIcon icon={faTrashAlt} />
-                        </Button>
+                        <>
+                          <Button 
+                            variant="danger" 
+                            size="sm" 
+                            onClick={() => handleDeleteFile(file)}
+                            disabled={isDeleting}
+                            className="me-2"
+                          >
+                            <FontAwesomeIcon icon={faTrashAlt} />
+                          </Button>
+                          <Button 
+                            variant="success" 
+                            size="sm" 
+                            onClick={(e) => handleDownloadFile(file, e)}
+                            disabled={isDownloading}
+                          >
+                            <FontAwesomeIcon icon={faDownload} />
+                          </Button>
+                        </>
                       )}
                     </ListGroup.Item>
                   ))}

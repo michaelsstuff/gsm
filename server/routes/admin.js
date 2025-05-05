@@ -932,4 +932,98 @@ router.get('/servers/:id/volumes', isAdmin, async (req, res) => {
   }
 });
 
+// @route   GET /api/admin/servers/:id/files/download
+// @desc    Download a file from a game server container
+// @access  Admin only
+router.get('/servers/:id/files/download', isAdmin, async (req, res) => {
+  try {
+    const { path } = req.query;
+    const gameServer = await GameServer.findById(req.params.id);
+    
+    if (!gameServer) {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+    
+    if (!path) {
+      return res.status(400).json({ message: 'File path is required' });
+    }
+    
+    // Normalize path to prevent directory traversal
+    const filePath = require('path').normalize(path).replace(/^(\.\.[\/\\])+/, '');
+    const containerName = gameServer.containerName;
+    
+    console.log(`Downloading file ${filePath} from container ${containerName}`);
+    
+    try {
+      // First check if the container is running
+      const { stdout: containerStatus } = await require('util').promisify(require('child_process').exec)(
+        `docker container inspect -f '{{.State.Status}}' ${containerName}`
+      );
+      
+      if (containerStatus.trim() !== 'running') {
+        return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
+      }
+      
+      // Check if file exists and is not a directory
+      const { stdout: fileType, stderr: fileTypeErr } = await require('util').promisify(require('child_process').exec)(
+        `docker exec ${containerName} /bin/sh -c "[ -f '${filePath}' ] && echo 'file' || echo 'not-file'"`
+      );
+      
+      if (fileType.trim() !== 'file') {
+        console.error('File type check error:', fileTypeErr);
+        return res.status(400).json({ message: 'Not a file or file does not exist' });
+      }
+      
+      // Create a temporary directory for the download
+      const tempDir = `/tmp/gsm-downloads-${Date.now()}`;
+      const tempFilePath = `${tempDir}/download`;
+      await require('util').promisify(require('child_process').exec)(`mkdir -p ${tempDir}`);
+      
+      try {
+        // Copy the file from the container to the temporary directory
+        await require('util').promisify(require('child_process').exec)(
+          `docker cp "${containerName}:${filePath}" "${tempFilePath}"`
+        );
+        
+        // Get the filename from the path
+        const fileName = filePath.split('/').pop();
+        
+        // Set headers for file download
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.setHeader('Content-Type', 'application/octet-stream');
+        
+        // Stream the file as the response
+        const fileStream = require('fs').createReadStream(tempFilePath);
+        fileStream.pipe(res);
+        
+        // Clean up the temporary directory after the file has been sent
+        fileStream.on('end', async () => {
+          try {
+            await require('util').promisify(require('child_process').exec)(`rm -rf ${tempDir}`);
+          } catch (cleanupErr) {
+            console.error('Error cleaning up temporary directory:', cleanupErr);
+          }
+        });
+      } catch (err) {
+        // Clean up on error
+        try {
+          await require('util').promisify(require('child_process').exec)(`rm -rf ${tempDir}`);
+        } catch (cleanupErr) {
+          console.error('Error cleaning up temporary directory:', cleanupErr);
+        }
+        
+        console.error('Error downloading file:', err);
+        return res.status(500).json({ message: 'Failed to download file: ' + (err.stderr || err.message) });
+      }
+    } catch (execError) {
+      console.error('Docker exec error:', execError);
+      const errorMessage = execError.stderr || execError.message || 'Unknown Docker error';
+      return res.status(500).json({ message: 'Failed to execute Docker command: ' + errorMessage });
+    }
+  } catch (error) {
+    console.error('Error handling file download:', error);
+    res.status(500).json({ message: 'Failed to handle file download: ' + error.message });
+  }
+});
+
 module.exports = router;
