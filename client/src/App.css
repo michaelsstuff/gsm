@@ -491,6 +491,19 @@ body.dark-mode span:not(.badge):not(.btn) {
   color: var(--text-color) !important;
 }
 
+/* File browser specific dark mode overrides */
+body.dark-mode .volume-heading,
+body.dark-mode h5.volume-heading,
+body.dark-mode .card-body h5.volume-heading {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  text-shadow: 0px 0px 1px rgba(255, 255, 255, 0.3) !important;
+}
+
+body.dark-mode .volume-info {
+  color: #e0e0e0 !important;
+}
+
 /* Button styles for dark mode */
 /* Standard buttons */
 body.dark-mode .btn {

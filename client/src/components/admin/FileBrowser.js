@@ -567,7 +567,9 @@ const FileBrowser = () => {
                 >
                   {index === 0 ? (
                     <>
-                      <FontAwesomeIcon icon={faHdd} /> {crumb.name}
+                      <FontAwesomeIcon icon={faHdd} /> <span style={{color: "white"}}>
+                        {crumb.name}
+                      </span>
                     </>
                   ) : (
                     crumb.name
@@ -576,7 +578,7 @@ const FileBrowser = () => {
               ))}
             </Breadcrumb>
             
-            {!inVolumesView && selectedVolume && selectedVolume.rw && (
+            {!inVolumesView && selectedVolume && (
               <Button 
                 variant="primary" 
                 size="sm"
@@ -598,7 +600,9 @@ const FileBrowser = () => {
             </div>
           ) : inVolumesView ? (
             <>
-              <h5 className="mb-3">Mounted Volumes</h5>
+              <h5 className="mb-3 volume-heading" style={{color: "white !important", fontWeight: "bold"}}>
+                <span style={{color: "white"}}>Mounted Volumes</span>
+              </h5>
               {volumes.length === 0 ? (
                 <div className="text-center p-4">
                   <p className="text-muted">No volumes mounted to this container.</p>
@@ -616,7 +620,7 @@ const FileBrowser = () => {
                       <span className="text-muted ms-2">
                         ({volume.destination})
                       </span>
-                      <small className="d-block text-muted">
+                      <small className="d-block volume-info">
                         {volume.type} - {volume.rw ? 'Read/Write' : 'Read Only'}
                       </small>
                     </ListGroup.Item>
