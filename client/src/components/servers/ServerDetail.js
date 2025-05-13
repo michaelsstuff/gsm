@@ -12,14 +12,12 @@ const ServerDetail = () => {
   const [statusRefresh, setStatusRefresh] = useState(0);
   const { isAuthenticated, user } = useAuth();
   const isAdmin = isAuthenticated && user?.role === 'admin';
-  const isMounted = useRef(true); // Add ref to track mounted state
-
-  // State for logs functionality
+  const isMounted = useRef(true); // Add ref to track mounted state  // State for logs functionality
   const [showLogs, setShowLogs] = useState(false);
   const [logs, setLogs] = useState('');
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [logLines, setLogLines] = useState(100);
-
+  
   // State for backup output
   const [showBackupOutput, setShowBackupOutput] = useState(false);
   const [backupOutput, setBackupOutput] = useState('');
@@ -34,6 +32,16 @@ const ServerDetail = () => {
   });
   const [backupHistory, setBackupHistory] = useState([]);
   const [loadingBackupStatus, setLoadingBackupStatus] = useState(false);
+  
+  // State for Discord webhook management
+  const [showDiscordWebhook, setShowDiscordWebhook] = useState(false);
+  const [discordWebhookForm, setDiscordWebhookForm] = useState({
+    enabled: false,
+    url: '',
+    notifyOnStart: true,
+    notifyOnStop: true
+  });
+  const [loadingDiscordWebhook, setLoadingDiscordWebhook] = useState(false);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -51,6 +59,7 @@ const ServerDetail = () => {
           setLoading(false);
           if (isAdmin) {
             loadBackupStatus();
+            loadDiscordWebhook();
           }
         }
       } catch (err) {
@@ -323,6 +332,31 @@ const ServerDetail = () => {
     }
   };
 
+  // Load Discord webhook settings
+  const loadDiscordWebhook = async () => {
+    if (!isAdmin) return;
+    
+    try {
+      setLoadingDiscordWebhook(true);
+      const res = await axios.get(`/api/admin/servers/${id}`);
+      if (isMounted.current && res.data.discordWebhook) {
+        setDiscordWebhookForm({
+          enabled: res.data.discordWebhook.enabled || false,
+          url: res.data.discordWebhook.url || '',
+          notifyOnStart: res.data.discordWebhook.notifyOnStart !== false, // default to true
+          notifyOnStop: res.data.discordWebhook.notifyOnStop !== false // default to true
+        });
+        setLoadingDiscordWebhook(false);
+      }
+    } catch (err) {
+      console.error('Error loading Discord webhook settings:', err);
+      if (isMounted.current) {
+        setError('Failed to load Discord webhook settings');
+        setLoadingDiscordWebhook(false);
+      }
+    }
+  };
+
   const handleSaveBackupSchedule = async () => {
     try {
       setLoading(true);
@@ -336,6 +370,27 @@ const ServerDetail = () => {
       console.error('Error saving backup schedule:', err);
       if (isMounted.current) {
         setError(err.response?.data?.message || 'Failed to save backup schedule');
+        setLoading(false);
+      }
+    }
+  };
+
+  // Save Discord webhook settings
+  const handleSaveDiscordWebhook = async () => {
+    try {
+      setLoading(true);
+      await axios.put(`/api/admin/servers/${id}/discord-webhook`, discordWebhookForm);
+      if (isMounted.current) {
+        // Refresh server data to get updated webhook settings
+        const res = await axios.get(`/api/servers/${id}`);
+        setServer(res.data);
+        setShowDiscordWebhook(false);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Error saving Discord webhook settings:', err);
+      if (isMounted.current) {
+        setError(err.response?.data?.message || 'Failed to save Discord webhook settings');
         setLoading(false);
       }
     }
@@ -485,6 +540,13 @@ const ServerDetail = () => {
                   >
                     Files
                   </Link>
+                  <Button 
+                    variant="primary"
+                    onClick={() => setShowDiscordWebhook(true)}
+                    disabled={loading}
+                  >
+                    Discord Notifications
+                  </Button>
                 </div>
               </Card.Body>
             </Card>
@@ -785,6 +847,98 @@ const ServerDetail = () => {
           </Button>
           <Button variant="primary" onClick={handleSaveBackupSchedule} disabled={loading}>
             Save Schedule
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Discord Webhook Modal */}
+      <Modal show={showDiscordWebhook} onHide={() => setShowDiscordWebhook(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Discord Notifications - {server?.name}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {loadingDiscordWebhook ? (
+            <div className="text-center">
+              <Spinner animation="border" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+              <p>Loading Discord settings...</p>
+            </div>
+          ) : (
+            <Form>
+              <Form.Group className="mb-3">
+                <Form.Check
+                  type="switch"
+                  id="discord-enabled"
+                  label="Enable Discord Notifications"
+                  checked={discordWebhookForm.enabled}
+                  onChange={e => setDiscordWebhookForm({
+                    ...discordWebhookForm,
+                    enabled: e.target.checked
+                  })}
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Discord Webhook URL</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={discordWebhookForm.url}
+                  onChange={e => setDiscordWebhookForm({
+                    ...discordWebhookForm,
+                    url: e.target.value
+                  })}
+                  placeholder="https://discord.com/api/webhooks/..."
+                  disabled={!discordWebhookForm.enabled}
+                />
+                <Form.Text className="text-muted">
+                  Create a webhook in your Discord server's channel settings and paste the URL here.
+                </Form.Text>
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Notification Settings</Form.Label>
+                <div>
+                  <Form.Check
+                    type="checkbox"
+                    id="notify-start"
+                    label="Send notification when server starts"
+                    checked={discordWebhookForm.notifyOnStart}
+                    onChange={e => setDiscordWebhookForm({
+                      ...discordWebhookForm,
+                      notifyOnStart: e.target.checked
+                    })}
+                    disabled={!discordWebhookForm.enabled}
+                  />
+                  <Form.Check
+                    type="checkbox"
+                    id="notify-stop"
+                    label="Send notification when server stops"
+                    checked={discordWebhookForm.notifyOnStop}
+                    onChange={e => setDiscordWebhookForm({
+                      ...discordWebhookForm,
+                      notifyOnStop: e.target.checked
+                    })}
+                    disabled={!discordWebhookForm.enabled}
+                  />
+                </div>
+              </Form.Group>
+
+              <div className="mt-4">
+                <Alert variant="info">
+                  <i className="bi bi-info-circle me-2"></i>
+                  Discord notifications will also be sent for backups and restarts automatically.
+                </Alert>
+              </div>
+            </Form>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDiscordWebhook(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleSaveDiscordWebhook} disabled={loading}>
+            Save Settings
           </Button>
         </Modal.Footer>
       </Modal>

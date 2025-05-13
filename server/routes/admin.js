@@ -513,6 +513,52 @@ router.get('/servers/:id/backup-job', isAdmin, async (req, res) => {
   }
 });
 
+// @route   PUT /api/admin/servers/:id/discord-webhook
+// @desc    Update Discord webhook settings for a game server
+// @access  Admin only
+router.put('/servers/:id/discord-webhook', isAdmin, async (req, res) => {
+  try {
+    const { enabled, url, notifyOnStart, notifyOnStop } = req.body;
+    
+    const gameServer = await GameServer.findById(req.params.id);
+    if (!gameServer) {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+
+    // Validate webhook URL if provided and enabled
+    if (enabled && url) {
+      const webhookUrlPattern = /^https:\/\/discord\.com\/api\/webhooks\/[0-9]+\/[\w-]+$/;
+      if (!webhookUrlPattern.test(url)) {
+        return res.status(400).json({ message: 'Invalid Discord webhook URL' });
+      }
+    }
+
+    // Create new Discord webhook settings object
+    const newDiscordWebhook = {
+      enabled: enabled ?? false,
+      url: url ?? '',
+      notifyOnStart: notifyOnStart ?? true,
+      notifyOnStop: notifyOnStop ?? true
+    };
+
+    // Update the server with the new webhook settings
+    gameServer.discordWebhook = newDiscordWebhook;
+
+    await gameServer.save();
+    
+    res.json({
+      message: 'Discord webhook settings updated successfully',
+      discordWebhook: gameServer.discordWebhook
+    });
+  } catch (error) {
+    console.error('Error updating Discord webhook settings:', error);
+    if (error.kind === 'ObjectId') {
+      return res.status(404).json({ message: 'Game server not found' });
+    }
+    res.status(500).json({ message: 'Failed to update Discord webhook settings: ' + error.message });
+  }
+});
+
 // @route   GET /api/admin/servers/:id/files
 // @desc    Get file listing for a game server container
 // @access  Admin only

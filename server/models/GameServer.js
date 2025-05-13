@@ -89,6 +89,24 @@ const GameServerSchema = new mongoose.Schema({
       default: null 
     }
   },
+  discordWebhook: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    url: {
+      type: String,
+      default: ''
+    },
+    notifyOnStart: {
+      type: Boolean,
+      default: true
+    },
+    notifyOnStop: {
+      type: Boolean,
+      default: true
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now,

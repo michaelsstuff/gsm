@@ -4,6 +4,7 @@ const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
 const GameServer = require('../models/GameServer');
+const discordWebhook = require('./discordWebhook');
 
 /**
  * Docker service to interact with Docker containers
@@ -58,6 +59,9 @@ const dockerService = {
    */
   async runCommand(containerName, command, options = {}) {
     try {
+      // Get server information for notifications
+      const server = await GameServer.findOne({ containerName });
+      
       // Handle standard docker commands directly
       if (['start', 'stop', 'restart'].includes(command)) {
         const dockerCommand = `docker ${command} ${containerName}`;
@@ -65,6 +69,15 @@ const dockerService = {
         
         if (stderr && !stderr.includes('Container is already')) {
           console.warn(`Command warning for ${containerName}:`, stderr);
+        }
+        
+        // Send Discord notification if server exists in db
+        if (server) {
+          // Get updated status after command execution
+          const newStatus = await this.getContainerStatus(containerName);
+          
+          // Send Discord webhook notification
+          await discordWebhook.sendNotification(server, command, newStatus);
         }
         
         return stdout || `Container ${command}ed successfully`;
@@ -79,6 +92,11 @@ const dockerService = {
           // Stop the container first
           console.log(`Stopping container ${containerName} before backup...`);
           await this.stopContainer(containerName);
+          
+          // Notify about server stop for backup
+          if (server) {
+            await discordWebhook.sendNotification(server, 'stop', 'stopped');
+          }
 
           // Execute backup using the internal script with retention setting
           const backupScript = '/app/scripts/backup_container.sh';
@@ -92,6 +110,12 @@ const dockerService = {
           // Start the container again regardless of backup result
           console.log(`Starting container ${containerName} after backup...`);
           await this.startContainer(containerName);
+          
+          // Notify about backup completion and server restart
+          if (server) {
+            await discordWebhook.sendNotification(server, 'backup', 'running');
+            await discordWebhook.sendNotification(server, 'start', 'running');
+          }
           
           return stdout || `Backup completed successfully for container ${containerName}`;
         } catch (error) {
