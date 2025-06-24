@@ -6,7 +6,6 @@ import ServerList from './components/servers/ServerList';
 import ServerDetail from './components/servers/ServerDetail';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
-import AdminDashboard from './components/admin/AdminDashboard';
 import ServerForm from './components/admin/ServerForm';
 import UserManagement from './components/admin/UserManagement';
 import FileBrowser from './components/admin/FileBrowser';
@@ -38,14 +37,6 @@ const App = () => {
             <Route path="/servers/:id" element={<ServerDetail />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route 
-              path="/admin" 
-              element={
-                <AdminRoute>
-                  <AdminDashboard />
-                </AdminRoute>
-              } 
-            />
             <Route 
               path="/admin/users" 
               element={

@@ -68,12 +68,12 @@ const ServerForm = () => {
       if (isEditing) {
         // Update existing server
         await axios.put(`/api/admin/servers/${id}`, formData);
+        navigate(`/servers/${id}`);
       } else {
         // Create new server - no longer adding commands
         await axios.post('/api/admin/servers', formData);
+        navigate('/servers');
       }
-      
-      navigate('/admin');
     } catch (err) {
       console.error('Error saving server:', err);
       setError(err.response?.data?.message || 'Failed to save server. Please try again.');
@@ -94,8 +94,8 @@ const ServerForm = () => {
 
   return (
     <Container className="mt-4">
-      <Link to="/admin" className="btn btn-outline-secondary mb-3">
-        &larr; Back to Admin Dashboard
+      <Link to={isEditing ? `/servers/${id}` : "/servers"} className="btn btn-outline-secondary mb-3">
+        &larr; {isEditing ? 'Back to Server Details' : 'Back to Servers'}
       </Link>
       
       <Card>
@@ -234,7 +234,7 @@ const ServerForm = () => {
               <Button variant="primary" type="submit" disabled={loading}>
                 {loading ? 'Saving...' : isEditing ? 'Update Server' : 'Add Server'}
               </Button>
-              <Link to="/admin" className="btn btn-outline-secondary">
+              <Link to={isEditing ? `/servers/${id}` : "/servers"} className="btn btn-outline-secondary">
                 Cancel
               </Link>
             </div>

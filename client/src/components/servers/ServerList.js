@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Badge, Spinner, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Card, Badge, Spinner, Alert, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 
 const ServerList = () => {
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { isAuthenticated, user } = useAuth();
+  const isAdmin = isAuthenticated && user?.role === 'admin';
 
   useEffect(() => {
     const fetchServers = async () => {
@@ -66,11 +69,23 @@ const ServerList = () => {
 
   return (
     <Container>
-      <h1 className="mb-4">Game Servers</h1>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h1>Game Servers</h1>
+        {isAdmin && (
+          <Link to="/admin/servers/new" className="btn btn-success">
+            <i className="fa fa-plus me-2"></i>Add Server
+          </Link>
+        )}
+      </div>
       
       {servers.length === 0 ? (
         <div className="text-center mt-5">
           <p className="lead">No game servers found.</p>
+          {isAdmin && (
+            <Link to="/admin/servers/new" className="btn btn-success">
+              Add Your First Server
+            </Link>
+          )}
         </div>
       ) : (
         <Row>

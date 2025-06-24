@@ -22,9 +22,6 @@ const Navigation = () => {
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
             <Nav.Link as={Link} to="/servers">Servers</Nav.Link>
-            {isAuthenticated && user?.role === 'admin' && (
-              <Nav.Link as={Link} to="/admin">Admin Dashboard</Nav.Link>
-            )}
           </Nav>
           <Nav>
             {/* Theme toggle button */}

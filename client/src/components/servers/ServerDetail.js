@@ -243,6 +243,24 @@ const ServerDetail = () => {
     }
   };
 
+  const handleDelete = async (id, name) => {
+    if (window.confirm(`Are you sure you want to remove ${name} from the server list? This won't delete the Docker container.`)) {
+      try {
+        setLoading(true);
+        await axios.delete(`/api/admin/servers/${id}`);
+        
+        // Redirect to servers list after successful deletion
+        window.location.href = '/servers';
+      } catch (err) {
+        console.error('Error deleting server:', err);
+        if (isMounted.current) {
+          setError('Failed to delete server. Please try again later.');
+          setLoading(false);
+        }
+      }
+    }
+  };
+
   const getStatusBadge = (status) => {
     let variant;
     switch (status) {
@@ -551,6 +569,29 @@ const ServerDetail = () => {
               </Card.Body>
             </Card>
           )}
+
+          {isAdmin && (
+            <Card className="mt-4">
+              <Card.Header>Server Management</Card.Header>
+              <Card.Body>
+                <div className="d-grid gap-2">
+                  <Link 
+                    to={`/admin/servers/edit/${server._id}`} 
+                    className="btn btn-secondary"
+                  >
+                    Edit Server
+                  </Link>
+                  <Button 
+                    variant="outline-danger"
+                    onClick={() => handleDelete(server._id, server.name)}
+                    disabled={loading}
+                  >
+                    Remove Server
+                  </Button>
+                </div>
+              </Card.Body>
+            </Card>
+          )}
         </Col>
 
         <Col md={8}>
@@ -605,17 +646,6 @@ const ServerDetail = () => {
               </Row>
             </Card.Body>
           </Card>
-
-          {isAdmin && (
-            <div className="text-end">
-              <Link 
-                to={`/admin/servers/edit/${server._id}`} 
-                className="btn btn-secondary"
-              >
-                Edit Server
-              </Link>
-            </div>
-          )}
         </Col>
       </Row>
 
