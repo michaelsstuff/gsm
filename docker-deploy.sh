@@ -52,23 +52,25 @@ case "$1" in
     echo "Backup created in ./backups directory"
     ;;
   letsencrypt-cloudflare)
-    # Check if Cloudflare credentials are set in environment variables
-    CF_EMAIL=${CLOUDFLARE_EMAIL}
-    CF_API_KEY=${CLOUDFLARE_API_KEY}
+    # Check if Cloudflare API token is set in environment variables
+    CF_API_TOKEN=${CLOUDFLARE_API_TOKEN}
     
-    # Allow override from command line parameters
-    if [ ! -z "$2" ] && [ ! -z "$3" ]; then
-      CF_EMAIL=$2
-      CF_API_KEY=$3
+    # Allow override from command line parameter
+    if [ ! -z "$2" ]; then
+      CF_API_TOKEN=$2
     fi
     
-    # Final check for required credentials
-    if [ -z "$CF_EMAIL" ] || [ -z "$CF_API_KEY" ]; then
-      echo "Error: Cloudflare credentials are required."
-      echo "Either set CLOUDFLARE_EMAIL and CLOUDFLARE_API_KEY in .env file"
-      echo "Or provide them as parameters:"
-      echo "Usage: $0 letsencrypt-cloudflare <cloudflare-email> <cloudflare-api-key>"
-      echo "Example: $0 letsencrypt-cloudflare user@example.com 1234567890abcdef1234567890abcdef"
+    # Check for API token
+    if [ ! -z "$CF_API_TOKEN" ]; then
+      # Use API token
+      CLOUDFLARE_CREDS="dns_cloudflare_api_token = $CF_API_TOKEN"
+      echo "Using Cloudflare API Token"
+    else
+      echo "Error: Cloudflare API token is required."
+      echo "Set CLOUDFLARE_API_TOKEN in .env file"
+      echo "Or provide API token as parameter:"
+      echo "Usage: $0 letsencrypt-cloudflare <cloudflare-api-token>"
+      echo "Example: $0 letsencrypt-cloudflare 1234567890abcdef1234567890abcdef"
       exit 1
     fi
     
@@ -80,8 +82,7 @@ case "$1" in
     
     # Create Cloudflare credentials file
     cat > ./data/certbot/cloudflare/cloudflare.ini << EOF
-dns_cloudflare_email = $CF_EMAIL
-dns_cloudflare_api_key = $CF_API_KEY
+$CLOUDFLARE_CREDS
 EOF
 
     # Set proper permissions for credentials file
@@ -93,7 +94,7 @@ EOF
                     certbot/dns-cloudflare:latest certonly \
                     --dns-cloudflare \
                     --dns-cloudflare-credentials /cloudflare/cloudflare.ini \
-                    --email $CF_EMAIL \
+                    --email ${EMAIL_ADDRESS:-admin@${DOMAIN}} \
                     --agree-tos \
                     --no-eff-email \
                     -d $DOMAIN \
@@ -128,8 +129,17 @@ EOF
                     -v "$(pwd)/data/certbot/cloudflare:/cloudflare" \
                     certbot/dns-cloudflare:latest renew \
                     --dns-cloudflare \
-                    --dns-cloudflare-credentials /cloudflare/cloudflare.ini \
-                    --quiet
+                    --dns-cloudflare-credentials /cloudflare/cloudflare.ini
+    
+    # Copy renewed certificates to the path nginx expects (if they exist)
+    if [ -f "./data/certbot/conf/live/$DOMAIN-0001/fullchain.pem" ]; then
+      echo "Copying renewed certificates to nginx path..."
+      cp "./data/certbot/conf/live/$DOMAIN-0001/fullchain.pem" "./data/certbot/conf/live/$DOMAIN/fullchain.pem"
+      cp "./data/certbot/conf/live/$DOMAIN-0001/privkey.pem" "./data/certbot/conf/live/$DOMAIN/privkey.pem"
+      cp "./data/certbot/conf/live/$DOMAIN-0001/chain.pem" "./data/certbot/conf/live/$DOMAIN/chain.pem"
+      cp "./data/certbot/conf/live/$DOMAIN-0001/cert.pem" "./data/certbot/conf/live/$DOMAIN/cert.pem"
+      echo "Certificates copied successfully."
+    fi
     
     # Restart frontend to apply renewed certificates
     docker-compose restart frontend

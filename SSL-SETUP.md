@@ -23,16 +23,20 @@ This will:
 If you're using Cloudflare as your DNS provider, you can use DNS validation instead of HTTP validation, which is more secure and works even if port 80 is blocked:
 
 1. Make sure your domain is properly configured in Cloudflare
-2. Set up your Cloudflare credentials in the `.env` file:
+2. Set up your Cloudflare API token in the `.env` file:
    ```
-   CLOUDFLARE_EMAIL=your@email.com
-   CLOUDFLARE_API_KEY=your_cloudflare_api_key
+   CLOUDFLARE_API_TOKEN=your_cloudflare_api_token
    ```
-   You can find your API Key in the Cloudflare dashboard under "My Profile" > "API Tokens" > "Global API Key"
+   You can create an API Token in the Cloudflare dashboard under "My Profile" > "API Tokens" > "Create Token". Use the "Custom token" template and give it Zone:DNS:Edit permissions for the specific zone.
 
 3. Run the command:
    ```bash
    ./docker-deploy.sh letsencrypt-cloudflare
+   ```
+   
+   Or provide the API token as a parameter:
+   ```bash
+   ./docker-deploy.sh letsencrypt-cloudflare your_api_token_here
    ```
    
 The script will:
