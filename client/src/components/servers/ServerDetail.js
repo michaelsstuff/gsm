@@ -44,6 +44,10 @@ const ServerDetail = () => {
   });
   const [loadingDiscordWebhook, setLoadingDiscordWebhook] = useState(false);
 
+  // State for delete confirmation modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -244,21 +248,31 @@ const ServerDetail = () => {
     }
   };
 
-  const handleDelete = async (id, name) => {
-    if (window.confirm(`Are you sure you want to remove ${name} from the server list? This won't delete the Docker container.`)) {
-      try {
-        setLoading(true);
-        await axios.delete(`/api/admin/servers/${id}`);
-        
-        // Redirect to servers list after successful deletion
-        window.location.href = '/servers';
-      } catch (err) {
-        console.error('Error deleting server:', err);
-        if (isMounted.current) {
-          setError('Failed to delete server. Please try again later.');
-          setLoading(false);
-        }
+  const handleDelete = async () => {
+    try {
+      setLoading(true);
+      await axios.delete(`/api/admin/servers/${server._id}`);
+      
+      // Redirect to servers list after successful deletion
+      window.location.href = '/servers';
+    } catch (err) {
+      console.error('Error deleting server:', err);
+      if (isMounted.current) {
+        setError('Failed to delete server. Please try again later.');
+        setLoading(false);
       }
+    }
+  };
+
+  const handleDeleteClick = () => {
+    setDeleteConfirmationText('');
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteConfirmationText === server.name) {
+      setShowDeleteModal(false);
+      handleDelete();
     }
   };
 
@@ -585,7 +599,7 @@ const ServerDetail = () => {
                   </Button>
                   <Button 
                     variant="outline-danger"
-                    onClick={() => handleDelete(server._id, server.name)}
+                    onClick={handleDeleteClick}
                     disabled={loading}
                   >
                     Remove Server
@@ -988,6 +1002,45 @@ const ServerDetail = () => {
           </Button>
           <Button variant="primary" onClick={handleSaveDiscordWebhook} disabled={loading}>
             Save Settings
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title className="text-danger">Confirm Server Removal</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Alert variant="warning">
+            <i className="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Warning:</strong> This action cannot be undone!
+          </Alert>
+          <p>
+            You are about to remove <strong>{server?.name}</strong> from the server list. 
+            This will not delete the Docker container, but it will remove all server configuration and backup schedules.
+          </p>
+          <p>
+            To confirm, please type the server name <strong>{server?.name}</strong> below:
+          </p>
+          <Form.Control
+            type="text"
+            placeholder={`Type "${server?.name}" to confirm`}
+            value={deleteConfirmationText}
+            onChange={e => setDeleteConfirmationText(e.target.value)}
+            className={deleteConfirmationText === server?.name ? 'is-valid' : ''}
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={handleDeleteConfirm}
+            disabled={deleteConfirmationText !== server?.name || loading}
+          >
+            Remove Server
           </Button>
         </Modal.Footer>
       </Modal>
