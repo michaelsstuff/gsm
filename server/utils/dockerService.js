@@ -71,8 +71,9 @@ const dockerService = {
           console.warn(`Command warning for ${containerName}:`, stderr);
         }
         
-        // Send Discord notification if server exists in db
-        if (server) {
+        // Send Discord notification if server exists in db and not triggered by backup
+        // or if backup notifications are enabled
+        if (server && (!options.isBackupOperation || server.backupSchedule?.notifyOnBackup !== false)) {
           // Get updated status after command execution
           const newStatus = await this.getContainerStatus(containerName);
           
@@ -88,13 +89,14 @@ const dockerService = {
           // Get server configuration for retention setting
           const server = await GameServer.findOne({ containerName });
           const retention = server?.backupSchedule?.retention || 5;
+          const shouldNotifyOnBackup = server?.backupSchedule?.notifyOnBackup !== false;
 
           // Stop the container first
           console.log(`Stopping container ${containerName} before backup...`);
           await this.stopContainer(containerName);
           
-          // Notify about server stop for backup
-          if (server) {
+          // Only notify about server stop for backup if backup notifications are enabled
+          if (server && shouldNotifyOnBackup) {
             await discordWebhook.sendNotification(server, 'stop', 'stopped');
           }
 
@@ -111,8 +113,8 @@ const dockerService = {
           console.log(`Starting container ${containerName} after backup...`);
           await this.startContainer(containerName);
           
-          // Notify about backup completion and server restart
-          if (server) {
+          // Only notify about backup completion and server restart if backup notifications are enabled
+          if (server && shouldNotifyOnBackup) {
             await discordWebhook.sendNotification(server, 'backup', 'running');
             await discordWebhook.sendNotification(server, 'start', 'running');
           }

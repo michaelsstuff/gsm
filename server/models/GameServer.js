@@ -68,6 +68,10 @@ const GameServerSchema = new mongoose.Schema({
         message: null,
         date: null
       })
+    },
+    notifyOnBackup: {
+      type: Boolean,
+      default: true
     }
   },
   activeBackupJob: {

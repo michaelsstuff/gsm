@@ -384,7 +384,7 @@ router.get('/servers/:id/logs', isAdmin, async (req, res) => {
 // @access  Admin only
 router.put('/servers/:id/backup-schedule', isAdmin, async (req, res) => {
   try {
-    const { enabled, cronExpression, retention } = req.body;
+    const { enabled, cronExpression, retention, notifyOnBackup } = req.body;
     
     const gameServer = await GameServer.findById(req.params.id);
     if (!gameServer) {
@@ -408,6 +408,7 @@ router.put('/servers/:id/backup-schedule', isAdmin, async (req, res) => {
       enabled: enabled ?? false,
       cronExpression: cronExpression ?? '0 0 * * *',
       retention: retention ?? 5,
+      notifyOnBackup: notifyOnBackup ?? true,
       lastBackup: gameServer.backupSchedule?.lastBackup || null,
       lastError: {
         message: gameServer.backupSchedule?.lastError?.message || null,

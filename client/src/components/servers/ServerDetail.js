@@ -28,7 +28,8 @@ const ServerDetail = () => {
   const [backupScheduleForm, setBackupScheduleForm] = useState({
     enabled: false,
     cronExpression: '0 0 * * *',
-    retention: 5
+    retention: 5,
+    notifyOnBackup: true
   });
   const [backupHistory, setBackupHistory] = useState([]);
   const [loadingBackupStatus, setLoadingBackupStatus] = useState(false);
@@ -336,7 +337,8 @@ const ServerDetail = () => {
         setBackupScheduleForm({
           enabled: backupSchedule?.enabled || false,
           cronExpression: backupSchedule?.cronExpression || '0 0 * * *',
-          retention: backupSchedule?.retention || 5
+          retention: backupSchedule?.retention || 5,
+          notifyOnBackup: backupSchedule?.notifyOnBackup !== false // default to true
         });
         setBackupHistory(backups);
         setLoadingBackupStatus(false);
@@ -798,6 +800,23 @@ const ServerDetail = () => {
             </Form.Group>
 
             <Form.Group className="mb-3">
+              <Form.Check
+                type="switch"
+                id="backup-notify"
+                label="Send Discord notifications for backups"
+                checked={backupScheduleForm.notifyOnBackup}
+                onChange={e => setBackupScheduleForm({
+                  ...backupScheduleForm,
+                  notifyOnBackup: e.target.checked
+                })}
+                disabled={!backupScheduleForm.enabled}
+              />
+              <Form.Text className="text-muted">
+                When enabled, Discord notifications will be sent for server stop, backup completion, and server restart during backup operations.
+              </Form.Text>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
               <Form.Label>Common Schedules:</Form.Label>
               <div className="mb-2">
                 <Button
@@ -957,7 +976,7 @@ const ServerDetail = () => {
               <div className="mt-4">
                 <Alert variant="info">
                   <i className="bi bi-info-circle me-2"></i>
-                  Discord notifications will also be sent for backups and restarts automatically.
+                  Discord notifications will also be sent for restarts automatically. Backup notifications can be controlled separately in the backup schedule settings.
                 </Alert>
               </div>
             </Form>
