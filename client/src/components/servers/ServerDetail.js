@@ -540,13 +540,6 @@ const ServerDetail = () => {
                     Backup Server
                   </Button>
                   <Button 
-                    variant="primary"
-                    onClick={() => setShowBackupSchedule(true)}
-                    disabled={loading}
-                  >
-                    Manage Backup Schedule
-                  </Button>
-                  <Button 
                     variant="secondary" 
                     onClick={handleShowLogs}
                     disabled={loading}
@@ -560,13 +553,6 @@ const ServerDetail = () => {
                   >
                     Files
                   </Link>
-                  <Button 
-                    variant="primary"
-                    onClick={() => setShowDiscordWebhook(true)}
-                    disabled={loading}
-                  >
-                    Discord Notifications
-                  </Button>
                 </div>
               </Card.Body>
             </Card>
@@ -583,6 +569,20 @@ const ServerDetail = () => {
                   >
                     Edit Server
                   </Link>
+                  <Button 
+                    variant="info"
+                    onClick={() => setShowBackupSchedule(true)}
+                    disabled={loading}
+                  >
+                    Manage Backup Schedule
+                  </Button>
+                  <Button 
+                    variant="primary"
+                    onClick={() => setShowDiscordWebhook(true)}
+                    disabled={loading}
+                  >
+                    Discord Notifications
+                  </Button>
                   <Button 
                     variant="outline-danger"
                     onClick={() => handleDelete(server._id, server.name)}
