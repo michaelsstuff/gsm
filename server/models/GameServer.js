@@ -27,6 +27,10 @@ const GameServerSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  modsDirectory: {
+    type: String,
+    trim: true,
+  },
   containerName: {
     type: String,
     required: true,

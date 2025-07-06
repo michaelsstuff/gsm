@@ -19,6 +19,7 @@ const ServerForm = () => {
     steamAppId: '',
     websiteUrl: '',
     description: '',
+    modsDirectory: '',
     containerName: '',
   });
 
@@ -228,6 +229,20 @@ const ServerForm = () => {
                 onChange={handleChange}
                 rows={3}
               />
+            </Form.Group>
+
+            <Form.Group className="mb-3" controlId="modsDirectory">
+              <Form.Label>Mods Directory Path (Optional)</Form.Label>
+              <Form.Control
+                type="text"
+                name="modsDirectory"
+                value={formData.modsDirectory}
+                onChange={handleChange}
+                placeholder="e.g. /server/mods or /opt/gameserver/addons"
+              />
+              <Form.Text className="text-muted">
+                Path to the mods directory inside the Docker container. If set, players will be able to browse and download mod files.
+              </Form.Text>
             </Form.Group>
 
             <div className="d-grid gap-2 mt-4">

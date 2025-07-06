@@ -85,6 +85,7 @@ router.post('/servers', isAdmin, async (req, res) => {
       steamAppId,
       websiteUrl,
       description,
+      modsDirectory,
       containerName
     } = req.body;
 
@@ -108,6 +109,7 @@ router.post('/servers', isAdmin, async (req, res) => {
       steamAppId,
       websiteUrl,
       description,
+      modsDirectory,
       containerName,
       status: await dockerService.getContainerStatus(containerName)
     });
@@ -158,7 +160,8 @@ router.put('/servers/:id', isAdmin, async (req, res) => {
       logo,
       steamAppId,
       websiteUrl,
-      description
+      description,
+      modsDirectory
     } = req.body;
 
     // Find game server
@@ -175,6 +178,7 @@ router.put('/servers/:id', isAdmin, async (req, res) => {
     if (steamAppId) gameServer.steamAppId = steamAppId;
     if (websiteUrl) gameServer.websiteUrl = websiteUrl;
     if (description) gameServer.description = description;
+    if (modsDirectory !== undefined) gameServer.modsDirectory = modsDirectory;
 
     await gameServer.save();
     

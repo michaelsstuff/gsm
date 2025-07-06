@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Home from './components/Home';
 import ServerList from './components/servers/ServerList';
 import ServerDetail from './components/servers/ServerDetail';
+import ModsBrowser from './components/servers/ModsBrowser';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import ServerForm from './components/admin/ServerForm';
@@ -35,6 +36,7 @@ const App = () => {
             <Route path="/home" element={<Home />} />
             <Route path="/servers" element={<ServerList />} />
             <Route path="/servers/:id" element={<ServerDetail />} />
+            <Route path="/servers/:id/mods" element={<ModsBrowser />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route 

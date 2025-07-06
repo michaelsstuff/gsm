@@ -520,6 +520,22 @@ const ServerDetail = () => {
             </Card.Body>
           </Card>
 
+          {server.modsDirectory && (
+            <Card className="mt-4">
+              <Card.Header>Downloads</Card.Header>
+              <Card.Body>
+                <div className="d-grid gap-2">
+                  <Link 
+                    to={`/servers/${server._id}/mods`}
+                    className="btn btn-outline-primary"
+                  >
+                    Browse & Download Mods
+                  </Link>
+                </div>
+              </Card.Body>
+            </Card>
+          )}
+
           {isAdmin && (
             <Card className="mt-4">
               <Card.Header>Admin Actions</Card.Header>
@@ -652,6 +668,20 @@ const ServerDetail = () => {
                     >
                       Store
                     </a>
+                  </Col>
+                </Row>
+              )}
+              
+              {server.modsDirectory && (
+                <Row className="mb-3">
+                  <Col sm={4}><strong>Mods:</strong></Col>
+                  <Col sm={8}>
+                    <Link 
+                      to={`/servers/${server._id}/mods`}
+                      className="text-decoration-none"
+                    >
+                      Browse & Download Mods
+                    </Link>
                   </Col>
                 </Row>
               )}
