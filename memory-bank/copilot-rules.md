@@ -28,6 +28,9 @@
 - First registered user automatically becomes admin (hardcoded behavior)
 - Protect admin routes with middleware chain: `isAuthenticated` → `isAdmin`
 - MongoDB sessions require `authSource=admin` in connection string
+- **Always check passwords against HaveIBeenPwned API during registration and password changes**
+- **Block passwords found more than 10 times in data breaches**
+- **Use k-anonymity model - only send first 5 characters of SHA-1 hash to HIBP API**
 
 ## 🎯 Frontend Development
 

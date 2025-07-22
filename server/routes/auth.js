@@ -3,6 +3,7 @@ const router = express.Router();
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const passwordSecurity = require('../utils/passwordSecurity');
 
 // Middleware to check if user is authenticated
 const isAuthenticated = (req, res, next) => {
@@ -31,6 +32,17 @@ router.post('/register', async (req, res) => {
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
+    }
+    
+    // Check password against HaveIBeenPwned database
+    const passwordCheck = await passwordSecurity.checkPassword(password);
+    
+    if (passwordCheck.isPwned && passwordSecurity.shouldBlockPassword(passwordCheck.count)) {
+      return res.status(400).json({ 
+        message: 'This password has been compromised in data breaches and cannot be used',
+        details: passwordSecurity.getSecurityMessage(passwordCheck.count),
+        securityWarning: true
+      });
     }
     
     // Create new user
@@ -164,6 +176,17 @@ router.put('/profile', isAuthenticated, async (req, res) => {
         return res.status(400).json({ message: 'Current password is incorrect' });
       }
 
+      // Check new password against HaveIBeenPwned database
+      const passwordCheck = await passwordSecurity.checkPassword(newPassword);
+      
+      if (passwordCheck.isPwned && passwordSecurity.shouldBlockPassword(passwordCheck.count)) {
+        return res.status(400).json({ 
+          message: 'This password has been compromised in data breaches and cannot be used',
+          details: passwordSecurity.getSecurityMessage(passwordCheck.count),
+          securityWarning: true
+        });
+      }
+
       user.password = newPassword;
     }
 
@@ -191,6 +214,35 @@ router.put('/profile', isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('Profile update error:', error);
     res.status(500).json({ message: 'Server error during profile update' });
+  }
+});
+
+// @route   POST /api/auth/check-password
+// @desc    Check password against HaveIBeenPwned database
+// @access  Public (for real-time checking during registration/password change)
+router.post('/check-password', async (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({ message: 'Password is required' });
+    }
+    
+    const passwordCheck = await passwordSecurity.checkPassword(password);
+    
+    res.json({
+      isPwned: passwordCheck.isPwned,
+      count: passwordCheck.count,
+      message: passwordSecurity.getSecurityMessage(passwordCheck.count),
+      shouldBlock: passwordSecurity.shouldBlockPassword(passwordCheck.count),
+      error: passwordCheck.error || null
+    });
+  } catch (error) {
+    console.error('Password check error:', error);
+    res.status(500).json({ 
+      message: 'Error checking password security',
+      error: 'Password security service temporarily unavailable'
+    });
   }
 });
 

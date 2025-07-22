@@ -1,10 +1,11 @@
+````instructions
 # Game Server Manager - AI Coding Assistant Instructions
 
 ## Memory Bank System
 
 - 🧠 **ALWAYS read `/memory-bank/memory-bank-instructions.md` first**
 - 🗂 **Load all `/memory-bank/*.md` files before each task**
-- 📂 **Also load files from active feature folders (e.g. `/memory-bank/authentication/`)**
+- 📂 **Also load files from active feature folders (e.g. `/memory-bank/features/`)**
 - 📝 **On "/update memory bank", refresh `activeContext.md` & `progress.md`**
 
 ## Project Overview

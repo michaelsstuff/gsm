@@ -23,11 +23,11 @@ All container operations go through `server/utils/dockerService.js`:
 
 ### Authentication Flow
 ```
-User Registration → Session Creation → Role Assignment → Route Protection
-                 ↓
-               MongoDB Session Store (persistent across restarts)
-                 ↓
-              Passport.js Middleware → isAuthenticated → isAdmin
+User Registration → Password Security Check → Session Creation → Role Assignment → Route Protection
+                 ↓                        ↓
+    HaveIBeenPwned API Check          MongoDB Session Store (persistent across restarts)
+                 ↓                        ↓
+         Block Compromised Passwords → Passport.js Middleware → isAuthenticated → isAdmin
 ```
 
 ### Data Flow Pattern

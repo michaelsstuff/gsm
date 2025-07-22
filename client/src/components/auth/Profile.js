@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
+import PasswordSecurityChecker from './PasswordSecurityChecker';
 
 const Profile = () => {
   const { user, updateProfile, error, clearError } = useAuth();
@@ -13,6 +14,7 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
+  const [passwordSecurity, setPasswordSecurity] = useState({ isSecure: true, shouldBlock: false });
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -32,6 +34,10 @@ const Profile = () => {
     // Clear global error and success messages
     if (error) clearError();
     if (success) setSuccess('');
+  };
+
+  const handlePasswordSecurityCheck = (securityStatus) => {
+    setPasswordSecurity(securityStatus);
   };
 
   const validateForm = () => {
@@ -57,6 +63,11 @@ const Profile = () => {
       if (formData.newPassword !== formData.confirmPassword) {
         errors.confirmPassword = 'Passwords do not match';
       }
+    }
+
+    // Check password security
+    if (formData.newPassword && passwordSecurity.shouldBlock) {
+      errors.newPassword = 'Please choose a more secure password';
     }
 
     setValidationErrors(errors);
@@ -203,6 +214,11 @@ const Profile = () => {
                   <Form.Control.Feedback type="invalid">
                     {validationErrors.newPassword}
                   </Form.Control.Feedback>
+                  <PasswordSecurityChecker 
+                    password={formData.newPassword} 
+                    onSecurityCheck={handlePasswordSecurityCheck}
+                    disabled={!formData.newPassword}
+                  />
                 </Form.Group>
 
                 {/* Confirm New Password */}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Form, Button, Card, Alert, Container, Row, Col } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import PasswordSecurityChecker from './PasswordSecurityChecker';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -11,6 +12,7 @@ const Register = () => {
     password2: ''
   });
   const [alertMessage, setAlertMessage] = useState(null);
+  const [passwordSecurity, setPasswordSecurity] = useState({ isSecure: true, shouldBlock: false });
   const { register, isAuthenticated, error, clearError } = useAuth();
   const navigate = useNavigate();
 
@@ -32,11 +34,22 @@ const Register = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handlePasswordSecurityCheck = (securityStatus) => {
+    setPasswordSecurity(securityStatus);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (password !== password2) {
       return setAlertMessage({ type: 'danger', message: 'Passwords do not match' });
+    }
+
+    if (passwordSecurity.shouldBlock) {
+      return setAlertMessage({ 
+        type: 'danger', 
+        message: 'Please choose a more secure password before registering' 
+      });
     }
     
     try {
@@ -102,6 +115,10 @@ const Register = () => {
                     required
                     minLength="6"
                   />
+                  <PasswordSecurityChecker 
+                    password={password} 
+                    onSecurityCheck={handlePasswordSecurityCheck}
+                  />
                 </Form.Group>
 
                 <Form.Group controlId="password2" className="mb-4">
@@ -118,7 +135,11 @@ const Register = () => {
                 </Form.Group>
 
                 <div className="d-grid">
-                  <Button variant="primary" type="submit">
+                  <Button 
+                    variant="primary" 
+                    type="submit"
+                    disabled={passwordSecurity.shouldBlock}
+                  >
                     Register
                   </Button>
                 </div>

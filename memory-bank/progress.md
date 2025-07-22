@@ -15,6 +15,7 @@
 - MongoDB session storage for persistence
 - Route protection middleware chain
 - **User profile management with email and password updates** ✅
+- **HaveIBeenPwned integration for password security** ✅
 
 ### Docker Integration ✅
 - Dockerode library for Docker API access
