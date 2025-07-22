@@ -14,6 +14,7 @@
 - First user automatically becomes admin
 - MongoDB session storage for persistence
 - Route protection middleware chain
+- **User profile management with email and password updates** ✅
 
 ### Docker Integration ✅
 - Dockerode library for Docker API access
@@ -34,6 +35,7 @@
 - Authentication context and protected routes
 - Server list and detail views
 - Admin management interfaces
+- **User profile page with form validation** ✅
 
 ### Backup System ✅
 - Automated backup scheduling with node-cron

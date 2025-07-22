@@ -22,6 +22,12 @@ const Navigation = () => {
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
             <Nav.Link as={Link} to="/servers">Servers</Nav.Link>
+            {isAuthenticated && user?.role === 'admin' && (
+              <>
+                <Nav.Link as={Link} to="/admin/users">User Management</Nav.Link>
+                <Nav.Link as={Link} to="/admin/servers/new">Add Server</Nav.Link>
+              </>
+            )}
           </Nav>
           <Nav>
             {/* Theme toggle button */}
@@ -39,6 +45,7 @@ const Navigation = () => {
             
             {isAuthenticated ? (
               <>
+                <Nav.Link as={Link} to="/profile">Profile</Nav.Link>
                 <Navbar.Text className="me-2">
                   Signed in as: <span className="navbar-username">{user?.username}</span>
                 </Navbar.Text>

@@ -7,6 +7,7 @@ import ServerDetail from './components/servers/ServerDetail';
 import ModsBrowser from './components/servers/ModsBrowser';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
+import Profile from './components/auth/Profile';
 import ServerForm from './components/admin/ServerForm';
 import UserManagement from './components/admin/UserManagement';
 import FileBrowser from './components/admin/FileBrowser';
@@ -18,6 +19,17 @@ const AdminRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
   
   if (!isAuthenticated || (user && user.role !== 'admin')) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
+
+// Protected route for authenticated users
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
   
@@ -39,6 +51,14 @@ const App = () => {
             <Route path="/servers/:id/mods" element={<ModsBrowser />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/admin/users" 
               element={

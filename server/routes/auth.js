@@ -139,4 +139,59 @@ router.get('/current', isAuthenticated, (req, res) => {
   });
 });
 
+// @route   PUT /api/auth/profile
+// @desc    Update user profile (email and password)
+// @access  Private
+router.put('/profile', isAuthenticated, async (req, res) => {
+  try {
+    const { email, currentPassword, newPassword } = req.body;
+    const userId = req.user._id;
+
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // If changing password, verify current password
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: 'Current password is required to change password' });
+      }
+
+      const isValidPassword = await user.comparePassword(currentPassword);
+      if (!isValidPassword) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
+
+      user.password = newPassword;
+    }
+
+    // Update email if provided
+    if (email && email !== user.email) {
+      // Check if email is already taken by another user
+      const existingUser = await User.findOne({ email, _id: { $ne: userId } });
+      if (existingUser) {
+        return res.status(400).json({ message: 'Email is already in use by another account' });
+      }
+      user.email = email;
+    }
+
+    await user.save();
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({ message: 'Server error during profile update' });
+  }
+});
+
 module.exports = router;

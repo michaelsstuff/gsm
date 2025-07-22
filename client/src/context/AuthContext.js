@@ -103,6 +103,23 @@ export const AuthProvider = ({ children }) => {
     setError(null);
   };
 
+  // Update user profile
+  const updateProfile = async (profileData) => {
+    try {
+      setError(null);
+      const res = await axios.put('/api/auth/profile', profileData);
+      
+      if (res.data.user) {
+        setUser(res.data.user);
+      }
+
+      return res.data;
+    } catch (err) {
+      setError(err.response?.data?.message || 'Profile update failed');
+      throw err;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -113,6 +130,7 @@ export const AuthProvider = ({ children }) => {
         register,
         login,
         logout,
+        updateProfile,
         clearError
       }}
     >
