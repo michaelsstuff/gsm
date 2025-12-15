@@ -1,111 +1,133 @@
 # Game Server Manager
 
-A web application for managing and monitoring game servers running as Docker containers. This system provides a user-friendly interface to check server status, view connection details, and control game servers through a secure admin interface.
+A web application for managing and monitoring game servers running as Docker containers. Provides a user-friendly interface to check server status, view connection details, and control game servers through a secure admin interface.
 
 ## Features
 
-- **Server Status Dashboard**: View all game servers with real-time status indicators
+- **Server Status Dashboard**: Real-time status indicators for all game servers
 - **Server Details**: Connection strings, logos, Steam links, and website links
 - **Admin Control Panel**: Start, stop, restart, and backup game servers
-- **Docker Integration**: Seamless management of game servers running in Docker containers
-- **User Authentication**: Secure access with role-based permissions
+- **Docker Integration**: Seamless management via Docker API
+- **User Authentication**: Secure role-based access control
+- **Automated Backups**: Scheduled MongoDB and game server backups with Discord notifications
 
 ## Technology Stack
 
 - **Backend**: Node.js with Express
 - **Frontend**: React with Bootstrap
 - **Database**: MongoDB
-- **Authentication**: Passport.js with JWT
-- **Container Management**: Dockerode for Docker API integration
-- **Deployment**: Docker Compose for containerized deployment
-
-## Prerequisites
-
-- Docker and Docker Compose
-- SSL certificates (for production deployment)
-
-## Installation and Deployment
-
-The Game Server Manager is designed to be deployed using Docker Compose for easier setup and management.
-
-### 1. Clone the repository
-
-```bash
-git clone https://your-repository-url/game-server-manager.git
-cd game-server-manager
-```
-
-### 2. Environment Configuration
-
-```bash
-# The system will create an .env file from template on first run
-./docker-deploy.sh start
-```
-
-After the script creates the .env file, edit it with your preferred settings before continuing deployment.
-
-### 3. Deployment Commands
-
-The `docker-deploy.sh` script provides all necessary commands to manage your deployment:
-
-```bash
-# Start the application
-./docker-deploy.sh start
-
-# Stop the application
-./docker-deploy.sh stop
-
-# Restart the application
-./docker-deploy.sh restart
-
-# Rebuild and restart containers
-./docker-deploy.sh rebuild
-
-# View container logs
-./docker-deploy.sh logs
-
-# Backup MongoDB data
-./docker-deploy.sh backup
-
-# Set up custom SSL certificates
-./docker-deploy.sh custom-ssl <path-to-fullchain.pem> <path-to-privkey.pem>
-```
-
-## SSL Configuration
-
-For production deployment, you have two options:
-
-1. **Let's Encrypt** (Automatic): Follow the instructions in `init-letsencrypt.sh`
-2. **Custom SSL**: Use your own certificates with:
-   ```bash
-   ./docker-deploy.sh custom-ssl ./my-cert.pem ./my-key.pem
-   ```
-
-For more details on SSL setup, see the `SSL-SETUP.md` file.
-
-## Initial Setup
-
-1. Deploy the application using `./docker-deploy.sh start`
-2. Access the web interface at https://your-domain
-3. Register the first user (automatically becomes an admin)
-4. Log in as admin
-5. Add your game servers through the admin dashboard
-
-## Security Considerations
-
-- Change the default secrets in the `.env` file
-- Set up proper Docker security for container management
-- Always use HTTPS in production environments
-- Configure proper MongoDB authentication
+- **Authentication**: Passport.js with session management
+- **Container Management**: Dockerode
+- **Deployment**: Docker Compose
 
 ## Quick Start
 
-For a more detailed step-by-step guide, see `QUICK-START.md`.
+### Prerequisites
+- Docker and Docker Compose installed
+- Domain name (for production)
+
+### Installation
+
+```bash
+# Clone and navigate to repository
+git clone https://github.com/michaelsstuff/gsm.git
+cd gsm
+```
+
+### Configuration
+
+On first run, the deployment script creates `.env` from the template. Configure it before starting:
+
+```bash
+# Create .env file
+cp .env.example .env
+
+# Edit with your settings
+vi .env  # or use your preferred editor
+```
+
+Edit `.env` file with your settings:
+```bash
+# MongoDB credentials
+MONGO_INITDB_ROOT_USERNAME=admin
+MONGO_INITDB_ROOT_PASSWORD=your_secure_password
+
+# Security secrets (generate random strings)
+SESSION_SECRET=your_session_secret
+JWT_SECRET=your_jwt_secret
+
+# Domain configuration
+DOMAIN_NAME=your-domain.com
+EMAIL_ADDRESS=admin@your-domain.com
+```
+
+After configuration, start the application:
+```bash
+./docker-deploy.sh start
+```
+
+### SSL Setup
+
+**Option 1: Let's Encrypt (Recommended)**
+```bash
+./init-letsencrypt.sh
+```
+
+**Option 2: Custom Certificates**
+```bash
+./docker-deploy.sh custom-ssl /path/to/fullchain.pem /path/to/privkey.pem
+```
+
+See `SSL-SETUP.md` for Cloudflare DNS challenge setup.
+
+### First Use
+
+1. Access `https://your-domain` (or `https://localhost` for development)
+2. Register first user (automatically becomes admin)
+3. Login and navigate to Admin Dashboard
+4. Add game servers with Docker container details
+
+### Management Commands
+
+```bash
+./docker-deploy.sh start       # Start all containers
+./docker-deploy.sh stop        # Stop all containers
+./docker-deploy.sh restart     # Restart containers
+./docker-deploy.sh rebuild     # Rebuild and restart
+./docker-deploy.sh logs        # View container logs
+./docker-deploy.sh backup      # Backup MongoDB
+```
+
+## Game Server Management
+
+Add servers through the admin interface with:
+- Server name and description
+- Docker container name
+- Connection details
+- Optional: Logo URL, Steam App ID, website link
+- Backup schedule and Discord webhook notifications
+
+The application manages external Docker containers (not part of the compose stack) via the mounted Docker socket.
+
+## Security Notes
+
+- **Change all default secrets** in `.env` before production use
+- Use HTTPS in production (enforce via nginx config)
+- MongoDB authentication is enabled by default
+- First registered user becomes admin automatically
+- Docker socket access requires appropriate container privileges
+
+## Troubleshooting
+
+- **Container issues**: Check logs with `./docker-deploy.sh logs`
+- **Database errors**: Verify MongoDB credentials in `.env`
+- **SSL problems**: Ensure domain DNS points to server
+- **Docker API errors**: Verify `/var/run/docker.sock` mount permissions
 
 ## License
 
-MIT License
+GNU General Public License v3.0 - See `LICENSE` file
 
 ## Contributing
 
-Contributions are welcome. Please feel free to submit a Pull Request.
+Contributions welcome! Please submit pull requests or open issues for bugs and feature requests.
