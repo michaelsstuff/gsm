@@ -12,7 +12,7 @@ fi
 
 CONTAINER_NAME="$1"
 RETENTION="${2:-5}"  # Default to 5 if not provided
-BACKUP_DIR="/app/backups"
+BACKUP_DIR="${BACKUP_PATH:-/app/backups}"
 VOLUMES_DIR="/app/container-volumes"
 DATE=$(date +%Y%m%d-%H%M%S)
 BACKUP_FILE="${BACKUP_DIR}/${CONTAINER_NAME}-${DATE}.tar.gz"

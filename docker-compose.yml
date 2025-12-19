@@ -31,7 +31,7 @@ services:
       - "${API_PORT:-5000}:5000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /mnt/backup/container2/:/app/backups
+      - ${BACKUP_PATH:-/mnt/backup/container2}:/app/backups
       - /var/opt/container-volumes:/app/container-volumes:ro
       - /var/opt/container-compose:/app/container-compose:ro
     environment:
@@ -41,6 +41,7 @@ services:
       - SESSION_SECRET=${SESSION_SECRET:-change_this_in_production}
       - JWT_SECRET=${JWT_SECRET:-change_this_in_production}
       - CLIENT_URL=${CLIENT_URL:-https://${DOMAIN_NAME}}
+      - BACKUP_PATH=/app/backups
     networks:
       - gsm-network
 

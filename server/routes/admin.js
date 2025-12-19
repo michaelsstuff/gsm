@@ -502,7 +502,7 @@ router.get('/servers/:id/backup-status', isAdmin, async (req, res) => {
     }
 
     // Get list of existing backups for this server
-    const backupPath = '/app/backups';
+    const backupPath = process.env.BACKUP_PATH || '/app/backups';
     const { stdout: backupFiles } = await require('util').promisify(require('child_process').exec)(
       `ls -t ${backupPath}/${gameServer.containerName}-*.tar.gz 2>/dev/null || true`
     );

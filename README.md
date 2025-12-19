@@ -141,6 +141,64 @@ The application manages external Docker containers (not part of the compose stac
 - **SSL problems**: Ensure domain DNS points to server
 - **Docker API errors**: Verify `/var/run/docker.sock` mount permissions
 
+## Backup System
+
+The application supports two types of backups with different workflows:
+
+### MongoDB Database Backups
+
+Backup application data (users, game server metadata, settings) manually or via scheduled tasks:
+
+```bash
+./docker-deploy.sh backup
+```
+
+Backups are stored in the configured `BACKUP_PATH` directory under `mongodb/` subdirectory.
+
+### Game Server Backups
+
+Automated backups of game server data configured individually per server through the admin dashboard:
+
+**Setup Process:**
+
+1. Navigate to Admin Dashboard → Server Settings
+2. Configure backup schedule:
+   - **Cron Expression**: Define schedule (e.g., `0 2 * * *` for daily at 2 AM)
+   - **Retention Policy**: Number of backups to keep (older backups auto-deleted)
+   - **Discord Webhook** (optional): URL for backup notifications
+
+**How It Works:**
+
+- Backup jobs register automatically on application startup
+- `backupScheduler.js` uses node-cron to execute scheduled backups
+- When triggered, the server is stopped, data is archived, then server restarts
+- Backups are stored in `BACKUP_PATH` as compressed tar.gz files
+- Old backups are automatically pruned based on retention policy
+- Discord notifications sent on completion/failure (if webhook configured)
+
+**Requirements:**
+
+Configure these paths in `.env`:
+
+```bash
+# Backup storage location (host path)
+BACKUP_PATH=/mnt/backup/container2
+```
+
+The backend container requires these volume mounts (automatically configured in docker-compose.yml):
+
+- `BACKUP_PATH:/app/backups` - Backup destination
+- `/var/opt/container-volumes:/app/container-volumes:ro` - Game server data (read-only)
+- `/var/opt/container-compose:/app/container-compose:ro` - Compose files (read-only)
+
+**Manual Backup:**
+
+Backup any server immediately via the admin interface "Backup Now" button, which executes the backup process outside the normal schedule.
+
+**Implementation Details:**
+
+See [server/utils/backupScheduler.js](server/utils/backupScheduler.js) for scheduling logic and [server/scripts/backup_container.sh](server/scripts/backup_container.sh) for backup execution.
+
 ## License
 
 GNU General Public License v3.0 - See `LICENSE` file

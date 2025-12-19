@@ -5,7 +5,7 @@ source /root/gsm/.env
 
 # Wrapper script to run MongoDB backup from host system
 CONTAINER_NAME="gsm-mongodb"
-BACKUP_DIR="/mnt/backup/mongo"
+BACKUP_DIR="${BACKUP_PATH:-/mnt/backup/container2}/mongodb"
 CONTAINER_BACKUP_DIR="/app/backups/mongodb"
 
 # Ensure backup directories exist

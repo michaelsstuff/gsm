@@ -7,7 +7,7 @@
 source ../../.env
 
 # Configuration
-BACKUP_DIR="/app/backups/mongodb"
+BACKUP_DIR="${BACKUP_PATH:-/app/backups}/mongodb"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP_PATH="${BACKUP_DIR}/backup-${TIMESTAMP}"
 KEEP_DAYS=7
