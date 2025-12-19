@@ -213,8 +213,65 @@ EOF
     
     echo "Custom SSL certificates installed. Your site should now be available at https://$DOMAIN"
     ;;
+  reset)
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║                      ⚠️  WARNING ⚠️                            ║"
+    echo "║                                                               ║"
+    echo "║  This will PERMANENTLY DELETE all Game Server Manager data:  ║"
+    echo "║                                                               ║"
+    echo "║  • All containers will be stopped and removed                ║"
+    echo "║  • All Docker volumes will be deleted (MongoDB data)         ║"
+    echo "║  • All SSL certificates will be removed                      ║"
+    echo "║  • Database backups in ./backups will be preserved           ║"
+    echo "║  • .env file will be preserved                               ║"
+    echo "║                                                               ║"
+    echo "║  THIS ACTION CANNOT BE UNDONE!                               ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo ""
+    read -p "Type 'DELETE EVERYTHING' to confirm (case-sensitive): " CONFIRM
+    
+    if [ "$CONFIRM" != "DELETE EVERYTHING" ]; then
+      echo "Reset cancelled. No changes were made."
+      exit 0
+    fi
+    
+    echo ""
+    echo "Proceeding with complete reset..."
+    echo ""
+    
+    # Stop all containers
+    echo "→ Stopping all containers..."
+    $DOCKER_COMPOSE down
+    
+    # Remove containers forcefully if they still exist
+    echo "→ Removing containers..."
+    $CONTAINER_RUNTIME rm -f gsm-frontend gsm-backend gsm-mongodb 2>/dev/null || true
+    
+    # Remove Docker volumes
+    echo "→ Removing Docker volumes..."
+    $DOCKER_COMPOSE down -v
+    $CONTAINER_RUNTIME volume rm gsm_mongodb-data 2>/dev/null || true
+    
+    # Remove SSL certificates
+    echo "→ Removing SSL certificates..."
+    rm -rf ./data/certbot/conf/*
+    rm -rf ./data/certbot/cloudflare/*
+    
+    # Remove built images (optional - commented out by default)
+    # Uncomment these lines if you also want to remove the built images
+    # echo "→ Removing built images..."
+    # $CONTAINER_RUNTIME rmi gsm-frontend gsm-backend 2>/dev/null || true
+    
+    echo ""
+    echo "✓ Reset complete!"
+    echo ""
+    echo "All containers, volumes, and certificates have been removed."
+    echo "Preserved: .env file and ./backups directory"
+    echo ""
+    echo "To start fresh, run: ./docker-deploy.sh start"
+    ;;
   *)
-    echo "Usage: $0 {start|stop|restart|rebuild|logs|backup|letsencrypt-cloudflare|renew-certificates|custom-ssl}"
+    echo "Usage: $0 {start|stop|restart|rebuild|logs|backup|letsencrypt-cloudflare|renew-certificates|custom-ssl|reset}"
     exit 1
     ;;
 esac
