@@ -53,7 +53,7 @@ Game servers are NOT part of the compose stack. Backend accesses them through:
 Backend container needs these host paths:
 ```yaml
 /var/run/docker.sock:/var/run/docker.sock      # Docker API access
-/mnt/backup/container2/:/app/backups           # Backup storage
+/mnt/backup/container/:/app/backups           # Backup storage
 /var/opt/container-volumes:/app/container-volumes:ro   # Game data (read-only)
 /var/opt/container-compose:/app/container-compose:ro   # Compose files (read-only)
 ```

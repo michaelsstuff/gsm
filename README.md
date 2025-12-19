@@ -182,7 +182,7 @@ Configure these paths in `.env`:
 
 ```bash
 # Backup storage location (host path)
-BACKUP_PATH=/mnt/backup/container2
+BACKUP_PATH=/mnt/backup/container
 ```
 
 The backend container requires these volume mounts (automatically configured in docker-compose.yml):

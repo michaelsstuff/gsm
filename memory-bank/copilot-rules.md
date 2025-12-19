@@ -50,7 +50,7 @@
 
 - Backup scheduler uses Mongoose post-hooks to auto-cleanup cron jobs
 - All backup operations should notify via Discord webhooks
-- External volume mounts required: `/mnt/backup/container2/` and `/var/opt/container-volumes/`
+- External volume mounts required: `/mnt/backup/container/` and `/var/opt/container-volumes/`
 - File uploads limited to 100MB via express-fileupload middleware
 
 ## 🌐 SSL and Production

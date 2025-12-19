@@ -31,7 +31,7 @@ services:
       - "${API_PORT:-5000}:5000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ${BACKUP_PATH:-/mnt/backup/container2}:/app/backups
+      - ${BACKUP_PATH:-/mnt/backup/container}:/app/backups
       - /var/opt/container-volumes:/app/container-volumes:ro
       - /var/opt/container-compose:/app/container-compose:ro
     environment:

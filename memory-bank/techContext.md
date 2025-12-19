@@ -73,7 +73,7 @@
 ### Required Mounts
 
 - `/var/run/docker.sock` - Docker API access
-- `/mnt/backup/container2/` - Backup storage location
+- `/mnt/backup/container/` - Backup storage location
 - `/var/opt/container-volumes/` - Game server data access (read-only)
 - `/var/opt/container-compose/` - Docker compose files access (read-only)
 
