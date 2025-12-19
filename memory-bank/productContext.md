@@ -36,11 +36,13 @@ Server administrators often manage multiple game servers across different games 
 ## User Personas
 
 **Primary: Gaming Community Admin**
+
 - Manages 3-10 game servers for friends/community
 - Technical enough to use Docker but wants simpler management
 - Needs to delegate some control to trusted moderators
 
 **Secondary: Home Lab Enthusiast**
+
 - Runs various game servers for family/friends
 - Wants professional-looking interface for guests
 - Values automation and monitoring

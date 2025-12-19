@@ -23,6 +23,7 @@ A web application for managing and monitoring game servers running as Docker con
 ## Quick Start
 
 ### Prerequisites
+
 - Docker and Docker Compose installed
 - Domain name (for production)
 
@@ -52,6 +53,7 @@ vi .env  # or use your preferred editor
 ```
 
 After configuration, start the application:
+
 ```bash
 ./docker-deploy.sh start
 ```
@@ -59,11 +61,13 @@ After configuration, start the application:
 ### SSL Setup
 
 **Option 1: Let's Encrypt (Recommended)**
+
 ```bash
 ./init-letsencrypt.sh
 ```
 
 **Option 2: Custom Certificates**
+
 ```bash
 ./docker-deploy.sh custom-ssl /path/to/fullchain.pem /path/to/privkey.pem
 ```
@@ -91,6 +95,7 @@ See `SSL-SETUP.md` for Cloudflare DNS challenge setup.
 ## Game Server Management
 
 Add servers through the admin interface with:
+
 - Server name and description
 - Docker container name
 - Connection details

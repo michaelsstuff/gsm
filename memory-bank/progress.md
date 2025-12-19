@@ -3,12 +3,14 @@
 ## What Works (Completed Features)
 
 ### Core Infrastructure ✅
+
 - Docker Compose orchestration with nginx, backend, MongoDB
 - SSL support for both Let's Encrypt and custom certificates
 - Environment variable configuration with template system
 - Custom deployment script (`docker-deploy.sh`) with all lifecycle operations
 
 ### Authentication System ✅
+
 - Passport.js session-based authentication
 - Role-based access control (admin/user)
 - First user automatically becomes admin
@@ -18,6 +20,7 @@
 - **HaveIBeenPwned integration for password security** ✅
 
 ### Docker Integration ✅
+
 - Dockerode library for Docker API access
 - Container status monitoring (running/stopped/error)
 - Container start/stop/restart operations
@@ -25,12 +28,14 @@
 - Container existence validation
 
 ### Database Layer ✅
+
 - MongoDB with authentication enabled
 - Mongoose models for User and GameServer
 - Session storage in MongoDB
 - Database connection with auth source specification
 
 ### Frontend Application ✅
+
 - React 18 with React Router 6
 - Bootstrap 5 UI components
 - Authentication context and protected routes
@@ -39,6 +44,7 @@
 - **User profile page with form validation** ✅
 
 ### Backup System ✅
+
 - Automated backup scheduling with node-cron
 - Mongoose post-hooks for backup job management
 - Discord webhook notifications
@@ -47,6 +53,7 @@
 ## What's Left to Build
 
 ### Feature Enhancements
+
 - [ ] File browser improvements and security
 - [ ] Advanced server monitoring and logging
 - [ ] User permission granularity (per-server access)
@@ -54,6 +61,7 @@
 - [ ] Performance metrics and alerts
 
 ### Technical Improvements
+
 - [ ] Automated testing suite
 - [ ] CI/CD pipeline setup
 - [ ] Container health checks
@@ -61,6 +69,7 @@
 - [ ] Configuration validation
 
 ### Documentation
+
 - [ ] API documentation
 - [ ] Deployment troubleshooting guide
 - [ ] Security best practices guide

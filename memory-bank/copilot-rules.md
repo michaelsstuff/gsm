@@ -74,6 +74,18 @@
 - Use semantic search when unsure about existing implementations
 - Follow the project's pattern of external container management, not creation
 
+## 📖 Markdown Standards
+
+- Follow [markdownlint](https://github.com/DavidAnson/markdownlint/) rules for all Markdown files
+- Ensure proper heading hierarchy (headings should increment by one level at a time)
+- Use consistent list styles and proper indentation
+- Always include a single newline character at end of files
+- Surround headings, code blocks, and lists with blank lines
+- Specify language for fenced code blocks
+- Avoid trailing spaces and hard tabs
+- Use proper link and image syntax (no bare URLs)
+- Maintain consistent emphasis and strong styling throughout
+
 ## 🎮 Game Server Context
 
 - This manages existing game servers (Minecraft, Valheim, etc.), doesn't create them

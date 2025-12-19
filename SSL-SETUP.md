@@ -14,6 +14,7 @@ The simplest method is to use Let's Encrypt to automatically obtain and renew SS
 ```
 
 This will:
+
 - Configure a temporary nginx container
 - Obtain certificates from Let's Encrypt
 - Set up auto-renewal
@@ -24,22 +25,27 @@ If you're using Cloudflare as your DNS provider, you can use DNS validation inst
 
 1. Make sure your domain is properly configured in Cloudflare
 2. Set up your Cloudflare API token in the `.env` file:
-   ```
+
+   ```env
    CLOUDFLARE_API_TOKEN=your_cloudflare_api_token
    ```
+
    You can create an API Token in the Cloudflare dashboard under "My Profile" > "API Tokens" > "Create Token". Use the "Custom token" template and give it Zone:DNS:Edit permissions for the specific zone.
 
 3. Run the command:
+
    ```bash
    ./docker-deploy.sh letsencrypt-cloudflare
    ```
-   
+
    Or provide the API token as a parameter:
+
    ```bash
    ./docker-deploy.sh letsencrypt-cloudflare your_api_token_here
    ```
-   
+
 The script will:
+
 - Create a DNS TXT record to verify domain ownership
 - Obtain certificates from Let's Encrypt
 - Set up auto-renewal (certificates will renew automatically)
@@ -58,6 +64,7 @@ If you already have your own SSL certificates:
 ## Certificate Location
 
 All certificates are stored in the `./data/certbot/conf/live/your-domain/` directory, with the following files:
+
 - `fullchain.pem`: Your certificate including the full chain
 - `privkey.pem`: Your private key
 
