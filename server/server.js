@@ -66,14 +66,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/servers', gameServerRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Serve static assets in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/build')));
-  
-  app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../client', 'build', 'index.html'));
-  });
-}
+// Note: Frontend is served by a separate nginx container in Docker deployment
+// Backend only handles API routes
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/gameserver-manager')

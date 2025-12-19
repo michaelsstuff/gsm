@@ -116,8 +116,8 @@ case "$1" in
     
     echo "Setting up Let's Encrypt certificates for domain: $DOMAIN using Cloudflare DNS validation"
     
-    # Create necessary directories
-    mkdir -p ./data/certbot/conf/live/$DOMAIN
+    # Create necessary directories (but NOT the domain-specific live directory - certbot creates that)
+    mkdir -p ./data/certbot/conf/live
     mkdir -p ./data/certbot/cloudflare
     
     # Create Cloudflare credentials file
@@ -141,6 +141,24 @@ EOF
                     --rsa-key-size 4096
     
     # Check if certificates were successfully obtained
+    # Certbot may create $DOMAIN-0001, -0002, etc. if $DOMAIN directory exists from previous attempts
+    if [ -f "./data/certbot/conf/live/$DOMAIN/fullchain.pem" ]; then
+      CERT_DIR="$DOMAIN"
+    else
+      # Find the most recent certificate directory with a numeric suffix
+      CERT_DIR=$(find ./data/certbot/conf/live -maxdepth 1 -type d -name "${DOMAIN}-[0-9]*" | sort -V | tail -n 1 | xargs basename 2>/dev/null)
+      
+      if [ ! -z "$CERT_DIR" ] && [ -f "./data/certbot/conf/live/$CERT_DIR/fullchain.pem" ]; then
+        echo "Certificates created in $CERT_DIR, creating symlink to $DOMAIN..."
+        cd ./data/certbot/conf/live
+        ln -sf $CERT_DIR $DOMAIN
+        cd - > /dev/null
+      else
+        echo "Failed to obtain Let's Encrypt certificates. Check the output above for errors."
+        exit 1
+      fi
+    fi
+    
     if [ -f "./data/certbot/conf/live/$DOMAIN/fullchain.pem" ] && [ -f "./data/certbot/conf/live/$DOMAIN/privkey.pem" ]; then
       echo "Let's Encrypt certificates successfully obtained!"
       
@@ -158,7 +176,7 @@ EOF
       (crontab -l 2>/dev/null; echo "0 3 * * * cd $(pwd) && ./docker-deploy.sh renew-certificates") | crontab -
       echo "Auto-renewal configured to run daily at 3:00 AM."
     else
-      echo "Failed to obtain Let's Encrypt certificates. Check the output above for errors."
+      echo "Failed to create certificate symlink. Check the output above for errors."
       exit 1
     fi
     ;;
@@ -188,22 +206,35 @@ EOF
   custom-ssl)
     # Check if certificate files are provided
     if [ -z "$2" ] || [ -z "$3" ]; then
-      echo "Usage: $0 custom-ssl <path-to-fullchain.pem> <path-to-privkey.pem>"
-      echo "Example: $0 custom-ssl ./my-cert.pem ./my-key.pem"
-      exit 1
+      echo "No certificate files provided - generating self-signed certificates for domain: $DOMAIN"
+      echo "⚠️  WARNING: Self-signed certificates will show browser security warnings"
+      echo "   Only use this for development/testing purposes"
+      
+      # Create certificate directories if they don't exist
+      mkdir -p ./data/certbot/conf/live/$DOMAIN
+      
+      # Generate self-signed certificate
+      openssl req -x509 -nodes -days 365 -newkey rsa:4096 \
+        -keyout "./data/certbot/conf/live/$DOMAIN/privkey.pem" \
+        -out "./data/certbot/conf/live/$DOMAIN/fullchain.pem" \
+        -subj "/C=US/ST=State/L=City/O=Organization/CN=$DOMAIN"
+      
+      echo "✓ Self-signed certificates generated"
+    else
+      CERT_PATH=$2
+      KEY_PATH=$3
+      
+      echo "Setting up custom SSL certificates for domain: $DOMAIN"
+      
+      # Create certificate directories if they don't exist
+      mkdir -p ./data/certbot/conf/live/$DOMAIN
+      
+      # Copy the provided certificates
+      cp "$CERT_PATH" ./data/certbot/conf/live/$DOMAIN/fullchain.pem
+      cp "$KEY_PATH" ./data/certbot/conf/live/$DOMAIN/privkey.pem
+      
+      echo "✓ Custom certificates installed"
     fi
-    
-    CERT_PATH=$2
-    KEY_PATH=$3
-    
-    echo "Setting up custom SSL certificates for domain: $DOMAIN"
-    
-    # Create certificate directories if they don't exist
-    mkdir -p ./data/certbot/conf/live/$DOMAIN
-    
-    # Copy the provided certificates
-    cp "$CERT_PATH" ./data/certbot/conf/live/$DOMAIN/fullchain.pem
-    cp "$KEY_PATH" ./data/certbot/conf/live/$DOMAIN/privkey.pem
     
     # Set proper permissions
     chmod 600 ./data/certbot/conf/live/$DOMAIN/privkey.pem

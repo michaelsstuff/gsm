@@ -52,27 +52,49 @@ cp .env.example .env
 vi .env  # or use your preferred editor
 ```
 
-After configuration, start the application:
+### SSL Setup (Required Before Starting)
+
+SSL certificates must be configured before starting the application. Choose one option:
+
+**Option 1: Cloudflare DNS Challenge (Recommended for Production)**
+
+Best for most setups - works behind firewalls and doesn't require ports 80/443 open during setup:
 
 ```bash
-./docker-deploy.sh start
+./docker-deploy.sh letsencrypt-cloudflare YOUR_CLOUDFLARE_API_TOKEN
 ```
 
-### SSL Setup
-
-**Option 1: Let's Encrypt (Recommended)**
+Or set `CLOUDFLARE_API_TOKEN` in `.env` and run:
 
 ```bash
-./init-letsencrypt.sh
+./docker-deploy.sh letsencrypt-cloudflare
 ```
 
-**Option 2: Custom Certificates**
+**Option 2: Self-Signed Certificates (Development/Testing)**
+
+Quick setup for local development or testing (will show browser warnings):
+
+```bash
+./docker-deploy.sh custom-ssl
+```
+
+**Option 3: Custom Certificates (Production)**
+
+If you have your own SSL certificates:
 
 ```bash
 ./docker-deploy.sh custom-ssl /path/to/fullchain.pem /path/to/privkey.pem
 ```
 
-See `SSL-SETUP.md` for Cloudflare DNS challenge setup.
+See [SSL-SETUP.md](SSL-SETUP.md) for detailed configuration options and troubleshooting.
+
+### Start Application
+
+After SSL setup is complete, start the application:
+
+```bash
+./docker-deploy.sh start
+```
 
 ### First Use
 
