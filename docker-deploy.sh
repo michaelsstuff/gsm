@@ -52,6 +52,9 @@ fi
 
 # Load environment variables
 source .env
+
+# Load environment variables
+source .env
 DOMAIN=${DOMAIN_NAME:-example.com}
 
 # Check command argument
@@ -82,14 +85,16 @@ case "$1" in
   backup)
     echo "Backing up MongoDB data..."
     # Create backup directory if it doesn't exist
-    mkdir -p ./backups
+    BACKUP_DIR="${BACKUP_PATH:-/mnt/backup/container}/mongodb"
+    mkdir -p "$BACKUP_DIR"
     # Get container ID
     CONTAINER_ID=$($DOCKER_COMPOSE ps -q mongodb)
     # Run mongodump inside the container
     $CONTAINER_RUNTIME exec $CONTAINER_ID mongodump --username ${MONGO_INITDB_ROOT_USERNAME:-admin} --password ${MONGO_INITDB_ROOT_PASSWORD:-admin_password} --authenticationDatabase admin --db gameserver-manager --out /data/db/backup
     # Copy backup from container to host
-    $CONTAINER_RUNTIME cp $CONTAINER_ID:/data/db/backup ./backups/mongodb-$(date +%Y%m%d-%H%M%S)
-    echo "Backup created in ./backups directory"
+    TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+    $CONTAINER_RUNTIME cp $CONTAINER_ID:/data/db/backup "$BACKUP_DIR/mongodb-$TIMESTAMP"
+    echo "Backup created at: $BACKUP_DIR/mongodb-$TIMESTAMP"
     ;;
   letsencrypt-cloudflare)
     # Check if Cloudflare API token is set in environment variables
@@ -253,7 +258,7 @@ EOF
     echo "║  • All containers will be stopped and removed                ║"
     echo "║  • All Docker volumes will be deleted (MongoDB data)         ║"
     echo "║  • All SSL certificates will be removed                      ║"
-    echo "║  • Database backups in ./backups will be preserved           ║"
+    echo "║  • Database backups in \$BACKUP_PATH will be preserved        ║"
     echo "║  • .env file will be preserved                               ║"
     echo "║                                                               ║"
     echo "║  THIS ACTION CANNOT BE UNDONE!                               ║"
@@ -297,7 +302,7 @@ EOF
     echo "✓ Reset complete!"
     echo ""
     echo "All containers, volumes, and certificates have been removed."
-    echo "Preserved: .env file and ./backups directory"
+    echo "Preserved: .env file and \$BACKUP_PATH directory"
     echo ""
     echo "To start fresh, run: ./docker-deploy.sh start"
     ;;
