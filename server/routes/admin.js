@@ -73,6 +73,40 @@ router.put('/users/:id/role', isAdmin, async (req, res) => {
   }
 });
 
+// @route   DELETE /api/admin/users/:id
+// @desc    Delete a user
+// @access  Admin only
+router.delete('/users/:id', isAdmin, async (req, res) => {
+  try {
+    // Find user by ID
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Prevent admins from deleting themselves
+    if (req.user.id === req.params.id) {
+      return res.status(400).json({ message: 'You cannot delete your own account' });
+    }
+    
+    // Delete user
+    await User.findByIdAndDelete(req.params.id);
+    
+    res.json({
+      message: `User ${user.username} deleted successfully`
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    
+    if (error.kind === 'ObjectId') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   POST /api/admin/servers
 // @desc    Create a new game server
 // @access  Admin only

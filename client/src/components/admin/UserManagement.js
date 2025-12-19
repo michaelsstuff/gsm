@@ -9,9 +9,11 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [newRole, setNewRole] = useState('');
   const [updateLoading, setUpdateLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
   
   const { user: currentUser } = useAuth();
@@ -74,6 +76,40 @@ const UserManagement = () => {
       console.error('Error updating user role:', err);
       setError(err.response?.data?.message || 'Failed to update user role. Please try again.');
       setUpdateLoading(false);
+    }
+  };
+
+  const handleOpenDeleteModal = (user) => {
+    setSelectedUser(user);
+    setShowDeleteModal(true);
+  };
+
+  const handleCloseDeleteModal = () => {
+    setShowDeleteModal(false);
+    setSelectedUser(null);
+  };
+
+  const handleDeleteUser = async () => {
+    try {
+      setDeleteLoading(true);
+      
+      await axios.delete(`/api/admin/users/${selectedUser._id}`);
+      
+      // Remove user from state
+      setUsers(users.filter(user => user._id !== selectedUser._id));
+      
+      setSuccessMessage(`User ${selectedUser.username} deleted successfully`);
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+      
+      handleCloseDeleteModal();
+      setDeleteLoading(false);
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      setError(err.response?.data?.message || 'Failed to delete user. Please try again.');
+      setDeleteLoading(false);
+      handleCloseDeleteModal();
     }
   };
 
@@ -151,8 +187,18 @@ const UserManagement = () => {
                         onClick={() => handleOpenRoleModal(user)}
                         disabled={currentUser._id === user._id}
                         title={currentUser._id === user._id ? "You cannot change your own role" : "Change user role"}
+                        className="me-2"
                       >
                         Change Role
+                      </Button>
+                      <Button 
+                        variant="outline-danger" 
+                        size="sm" 
+                        onClick={() => handleOpenDeleteModal(user)}
+                        disabled={currentUser._id === user._id}
+                        title={currentUser._id === user._id ? "You cannot delete your own account" : "Delete user"}
+                      >
+                        Delete
                       </Button>
                     </td>
                   </tr>
@@ -197,6 +243,40 @@ const UserManagement = () => {
             disabled={updateLoading || (selectedUser && selectedUser.role === newRole)}
           >
             {updateLoading ? 'Updating...' : 'Save Changes'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Delete User Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={handleCloseDeleteModal}>
+        <Modal.Header closeButton>
+          <Modal.Title>Delete User</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedUser && (
+            <>
+              <Alert variant="warning">
+                <strong>Warning:</strong> This action cannot be undone!
+              </Alert>
+              <p>
+                Are you sure you want to delete the user <strong>{selectedUser.username}</strong>?
+              </p>
+              <p className="text-muted mb-0">
+                Email: {selectedUser.email}
+              </p>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseDeleteModal} disabled={deleteLoading}>
+            Cancel
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={handleDeleteUser} 
+            disabled={deleteLoading}
+          >
+            {deleteLoading ? 'Deleting...' : 'Delete User'}
           </Button>
         </Modal.Footer>
       </Modal>
