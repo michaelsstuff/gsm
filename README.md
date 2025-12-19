@@ -36,29 +36,19 @@ cd gsm
 
 ### Configuration
 
-On first run, the deployment script creates `.env` from the template. Configure it before starting:
+Run the setup helper to create `.env`, generate random secrets, and capture your domain/email:
 
 ```bash
-# Create .env file
-cp .env.example .env
-
-# Edit with your settings
-vi .env  # or use your preferred editor
+./setup.sh
 ```
 
-Edit `.env` file with your settings:
+The script fills `MONGO_INITDB_ROOT_PASSWORD`, `SESSION_SECRET`, and `JWT_SECRET` with random values, sets `DOMAIN_NAME` and `EMAIL_ADDRESS` from your prompts, and leaves `CLOUDFLARE_API_TOKEN` empty for you to fill if you use Cloudflare DNS.
+
+Prefer manual setup? Copy the template and edit it yourself:
+
 ```bash
-# MongoDB credentials
-MONGO_INITDB_ROOT_USERNAME=admin
-MONGO_INITDB_ROOT_PASSWORD=your_secure_password
-
-# Security secrets (generate random strings)
-SESSION_SECRET=your_session_secret
-JWT_SECRET=your_jwt_secret
-
-# Domain configuration
-DOMAIN_NAME=your-domain.com
-EMAIL_ADDRESS=admin@your-domain.com
+cp .env.example .env
+vi .env  # or use your preferred editor
 ```
 
 After configuration, start the application:
