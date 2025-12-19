@@ -56,6 +56,11 @@ app.use(passport.initialize());
 app.use(passport.session());
 require('./config/passport')(passport);
 
+// Health check endpoint for container orchestration
+app.get('/api/auth/status', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/servers', gameServerRoutes);
