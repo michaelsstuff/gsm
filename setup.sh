@@ -32,12 +32,12 @@ prompt_non_empty() {
 generate_secret() {
   local bytes="$1"
   if command -v openssl >/dev/null 2>&1; then
-    openssl rand -base64 "$bytes" | tr -d '\n'
+    openssl rand -hex "$bytes" | tr -d '\n'
   else
     python - <<'PY' "$bytes"
-import base64, os, sys
+import os, sys
 n = int(sys.argv[1])
-print(base64.b64encode(os.urandom(n)).decode())
+print(os.urandom(n).hex())
 PY
   fi
 }
