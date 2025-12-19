@@ -1,6 +1,46 @@
 #!/bin/bash
 # Docker Deployment Script for Game Server Manager
 
+# Detect container runtime and compose command
+# Try Docker first, then Podman
+if command -v docker &> /dev/null; then
+  CONTAINER_RUNTIME="docker"
+  echo "Detected Docker runtime"
+  if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+    echo "Using docker-compose (V1)"
+  elif docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+    echo "Using docker compose (V2)"
+  else
+    echo "Error: Docker is available but Docker Compose is not."
+    echo "Please install Docker Compose: https://docs.docker.com/compose/install/"
+    exit 1
+  fi
+elif command -v podman &> /dev/null; then
+  CONTAINER_RUNTIME="podman"
+  echo "Detected Podman runtime"
+  if command -v podman-compose &> /dev/null; then
+    DOCKER_COMPOSE="podman-compose"
+    echo "Using podman-compose"
+  elif podman compose version &> /dev/null; then
+    DOCKER_COMPOSE="podman compose"
+    echo "Using podman compose"
+  else
+    echo "Error: Podman is available but podman-compose is not."
+    echo "Please install podman-compose: https://github.com/containers/podman-compose"
+    exit 1
+  fi
+else
+  echo "Error: Neither Docker nor Podman is available."
+  echo "Please install Docker or Podman to use this script."
+  exit 1
+fi
+
+echo "Container runtime: $CONTAINER_RUNTIME"
+echo "Compose command: $DOCKER_COMPOSE"
+echo ""
+
 # Check if .env file exists, if not create from template
 if [ ! -f .env ]; then
   echo "Creating .env file from template..."
@@ -18,37 +58,37 @@ DOMAIN=${DOMAIN_NAME:-example.com}
 case "$1" in
   start)
     echo "Starting Game Server Manager containers..."
-    docker-compose up -d
+    $DOCKER_COMPOSE up -d
     echo "Containers started! Frontend should be available at https://$DOMAIN"
     ;;
   stop)
     echo "Stopping Game Server Manager containers..."
-    docker-compose down
+    $DOCKER_COMPOSE down
     ;;
   restart)
     echo "Restarting Game Server Manager containers..."
-    docker-compose restart
+    $DOCKER_COMPOSE restart
     ;;
   rebuild)
     echo "Rebuilding and restarting Game Server Manager containers..."
-    docker-compose down
-    docker-compose build --no-cache
-    docker-compose up -d
+    $DOCKER_COMPOSE down
+    $DOCKER_COMPOSE build --no-cache
+    $DOCKER_COMPOSE up -d
     ;;
   logs)
     echo "Showing logs for Game Server Manager containers..."
-    docker-compose logs -f
+    $DOCKER_COMPOSE logs -f
     ;;
   backup)
     echo "Backing up MongoDB data..."
     # Create backup directory if it doesn't exist
     mkdir -p ./backups
     # Get container ID
-    CONTAINER_ID=$(docker-compose ps -q mongodb)
+    CONTAINER_ID=$($DOCKER_COMPOSE ps -q mongodb)
     # Run mongodump inside the container
-    docker exec $CONTAINER_ID mongodump --username ${MONGO_INITDB_ROOT_USERNAME:-admin} --password ${MONGO_INITDB_ROOT_PASSWORD:-admin_password} --authenticationDatabase admin --db gameserver-manager --out /data/db/backup
+    $CONTAINER_RUNTIME exec $CONTAINER_ID mongodump --username ${MONGO_INITDB_ROOT_USERNAME:-admin} --password ${MONGO_INITDB_ROOT_PASSWORD:-admin_password} --authenticationDatabase admin --db gameserver-manager --out /data/db/backup
     # Copy backup from container to host
-    docker cp $CONTAINER_ID:/data/db/backup ./backups/mongodb-$(date +%Y%m%d-%H%M%S)
+    $CONTAINER_RUNTIME cp $CONTAINER_ID:/data/db/backup ./backups/mongodb-$(date +%Y%m%d-%H%M%S)
     echo "Backup created in ./backups directory"
     ;;
   letsencrypt-cloudflare)
@@ -89,7 +129,7 @@ EOF
     chmod 600 ./data/certbot/cloudflare/cloudflare.ini
     
     # Run certbot with Cloudflare DNS plugin
-    docker run --rm -v "$(pwd)/data/certbot/conf:/etc/letsencrypt" \
+    $CONTAINER_RUNTIME run --rm -v "$(pwd)/data/certbot/conf:/etc/letsencrypt" \
                     -v "$(pwd)/data/certbot/cloudflare:/cloudflare" \
                     certbot/dns-cloudflare:latest certonly \
                     --dns-cloudflare \
@@ -108,7 +148,7 @@ EOF
       chmod 600 ./data/certbot/conf/live/$DOMAIN/privkey.pem
       
       # Restart frontend to apply new certificates
-      docker-compose restart frontend
+      $DOCKER_COMPOSE restart frontend
       
       echo "Certificates installed. Your site should now be available at https://$DOMAIN"
       echo "Note: These certificates will auto-renew when needed."
@@ -125,7 +165,7 @@ EOF
   renew-certificates)
     # Use environment variables for renewal
     echo "Renewing Let's Encrypt certificates..."
-    docker run --rm -v "$(pwd)/data/certbot/conf:/etc/letsencrypt" \
+    $CONTAINER_RUNTIME run --rm -v "$(pwd)/data/certbot/conf:/etc/letsencrypt" \
                     -v "$(pwd)/data/certbot/cloudflare:/cloudflare" \
                     certbot/dns-cloudflare:latest renew \
                     --dns-cloudflare \
@@ -142,7 +182,7 @@ EOF
     fi
     
     # Restart frontend to apply renewed certificates
-    docker-compose restart frontend
+    $DOCKER_COMPOSE restart frontend
     echo "Certificate renewal attempt completed."
     ;;
   custom-ssl)
@@ -169,7 +209,7 @@ EOF
     chmod 600 ./data/certbot/conf/live/$DOMAIN/privkey.pem
     
     # Restart frontend to apply new certificates
-    docker-compose restart frontend
+    $DOCKER_COMPOSE restart frontend
     
     echo "Custom SSL certificates installed. Your site should now be available at https://$DOMAIN"
     ;;
