@@ -203,10 +203,44 @@ router.get('/:id/mods/download/*filepath', async (req, res) => {
     const modsPath = gameServer.modsDirectory;
     const fullPath = path.posix.join(modsPath, filePath);
     
+    // Get file size first to set Content-Length header
+    const statProcess = spawn('docker', ['exec', containerName, 'stat', '-c', '%s', fullPath], {
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    
+    let sizeOutput = '';
+    let sizeError = '';
+    
+    statProcess.stdout.on('data', (data) => {
+      sizeOutput += data.toString();
+    });
+    
+    statProcess.stderr.on('data', (data) => {
+      sizeError += data.toString();
+    });
+    
+    await new Promise((resolve, reject) => {
+      statProcess.on('close', (code) => {
+        if (code !== 0) {
+          console.error('Error getting file size:', sizeError);
+          reject(new Error('File not found or access denied'));
+        } else {
+          resolve();
+        }
+      });
+      
+      statProcess.on('error', (error) => {
+        reject(error);
+      });
+    });
+    
+    const fileSize = parseInt(sizeOutput.trim());
+    
     // Set appropriate headers for file download
     const filename = path.basename(filePath);
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Length', fileSize);
     
     // Use docker exec to cat the file and pipe it to response
     const dockerExec = spawn('docker', ['exec', containerName, 'cat', fullPath], {

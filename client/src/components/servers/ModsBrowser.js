@@ -9,7 +9,6 @@ const ModsBrowser = () => {
   const [modFiles, setModFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [downloading, setDownloading] = useState({});
   const [downloadingBulk, setDownloadingBulk] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [sortField, setSortField] = useState('name');
@@ -92,29 +91,16 @@ const ModsBrowser = () => {
     return sortDirection === 'asc' ? '↑' : '↓';
   };
 
-  const handleDownload = async (file) => {
-    setDownloading(prev => ({ ...prev, [file.path]: true }));
-    
-    try {
-      const response = await axios.get(`/api/servers/${id}/mods/download/${file.path}`, {
-        responseType: 'blob'
-      });
-      
-      // Create blob link for download
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', file.name);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Error downloading file:', err);
-      alert('Failed to download file. Please try again.');
-    } finally {
-      setDownloading(prev => ({ ...prev, [file.path]: false }));
-    }
+  const handleDownload = (file) => {
+    // Trigger native browser download by creating a link and clicking it
+    // This allows the browser to show real-time download progress
+    const link = document.createElement('a');
+    link.href = `/api/servers/${id}/mods/download/${file.path}`;
+    link.setAttribute('download', file.name);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleBulkDownload = async (downloadAll = false) => {
@@ -300,23 +286,8 @@ const ModsBrowser = () => {
                           variant="outline-primary"
                           size="sm"
                           onClick={() => handleDownload(file)}
-                          disabled={downloading[file.path]}
                         >
-                          {downloading[file.path] ? (
-                            <>
-                              <Spinner
-                                as="span"
-                                animation="border"
-                                size="sm"
-                                role="status"
-                                aria-hidden="true"
-                                className="me-1"
-                              />
-                              Downloading...
-                            </>
-                          ) : (
-                            'Download'
-                          )}
+                          Download
                         </Button>
                       </td>
                     </tr>
