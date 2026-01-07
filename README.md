@@ -203,6 +203,21 @@ See [server/utils/backupScheduler.js](server/utils/backupScheduler.js) for sched
 
 GNU General Public License v3.0 - See `LICENSE` file
 
+## Known Issues
+
+### Build Warnings
+
+**lodash.get and lodash.isequal deprecation warnings:**
+During Docker build, you may see npm warnings about deprecated `lodash.get` and `lodash.isequal` packages. These are transitive dependencies of `react-ace` (used for the file browser code editor) and cannot be resolved until react-ace updates their dependencies. 
+
+- **Impact**: None - these are build-time warnings only
+- **Security**: No security vulnerabilities
+- **Functionality**: All features work correctly
+- **Tracking**: react-ace v14.0.1 (latest) still uses these packages
+- **Resolution**: Will be resolved automatically when react-ace updates
+
+These warnings can be safely ignored. The deprecated packages use syntax that npm suggests replacing with modern JavaScript features (optional chaining `?.` and `util.isDeepStrictEqual`), but they still function correctly.
+
 ## Contributing
 
 Contributions welcome! Please submit pull requests or open issues for bugs and feature requests.
