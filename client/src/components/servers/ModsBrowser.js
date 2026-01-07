@@ -10,6 +10,8 @@ const ModsBrowser = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [downloading, setDownloading] = useState({});
+  const [downloadingBulk, setDownloadingBulk] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [sortField, setSortField] = useState('name');
   const [sortDirection, setSortDirection] = useState('asc');
 
@@ -115,6 +117,60 @@ const ModsBrowser = () => {
     }
   };
 
+  const handleBulkDownload = async (downloadAll = false) => {
+    setDownloadingBulk(true);
+    
+    try {
+      const payload = downloadAll 
+        ? { downloadAll: true }
+        : { files: selectedFiles };
+      
+      const response = await axios.post(`/api/servers/${id}/mods/download-bulk`, payload, {
+        responseType: 'blob'
+      });
+      
+      // Create blob link for download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = downloadAll 
+        ? `${server?.name.replace(/[^a-zA-Z0-9]/g, '_')}_all_mods.zip`
+        : `${server?.name.replace(/[^a-zA-Z0-9]/g, '_')}_selected_mods.zip`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      if (!downloadAll) {
+        setSelectedFiles([]);
+      }
+    } catch (err) {
+      console.error('Error downloading files:', err);
+      alert('Failed to download files. Please try again.');
+    } finally {
+      setDownloadingBulk(false);
+    }
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedFiles(modFiles.map(file => file.path));
+    } else {
+      setSelectedFiles([]);
+    }
+  };
+
+  const handleSelectFile = (filePath) => {
+    setSelectedFiles(prev => {
+      if (prev.includes(filePath)) {
+        return prev.filter(p => p !== filePath);
+      } else {
+        return [...prev, filePath];
+      }
+    });
+  };
+
   if (loading) {
     return (
       <Container className="text-center mt-5">
@@ -147,6 +203,39 @@ const ModsBrowser = () => {
         <Card.Header as="h5">
           Mods - {server?.name}
           <Badge bg="secondary" className="ms-2">{modFiles.length} files</Badge>
+          <div className="float-end">
+            <Button
+              variant="success"
+              size="sm"
+              onClick={() => handleBulkDownload(true)}
+              disabled={downloadingBulk || modFiles.length === 0}
+              className="me-2"
+            >
+              {downloadingBulk ? (
+                <>
+                  <Spinner
+                    as="span"
+                    animation="border"
+                    size="sm"
+                    role="status"
+                    aria-hidden="true"
+                    className="me-1"
+                  />
+                  Preparing...
+                </>
+              ) : (
+                '📦 Download All'
+              )}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => handleBulkDownload(false)}
+              disabled={downloadingBulk || selectedFiles.length === 0}
+            >
+              📥 Download Selected ({selectedFiles.length})
+            </Button>
+          </div>
         </Card.Header>
         <Card.Body>
           {modFiles.length === 0 ? (
@@ -158,6 +247,14 @@ const ModsBrowser = () => {
               <Table striped hover>
                 <thead>
                   <tr>
+                    <th style={{ width: '40px' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedFiles.length === modFiles.length && modFiles.length > 0}
+                        onChange={handleSelectAll}
+                        className="form-check-input"
+                      />
+                    </th>
                     <th 
                       style={{ cursor: 'pointer', userSelect: 'none' }}
                       onClick={() => handleSort('name')}
@@ -185,6 +282,14 @@ const ModsBrowser = () => {
                 <tbody>
                   {getSortedFiles().map((file, index) => (
                     <tr key={index}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedFiles.includes(file.path)}
+                          onChange={() => handleSelectFile(file.path)}
+                          className="form-check-input"
+                        />
+                      </td>
                       <td>
                         <span className="text-primary fw-bold">{file.name}</span>
                       </td>
