@@ -4,6 +4,7 @@ const GameServer = require('../models/GameServer');
 const dockerService = require('../utils/dockerService');
 const path = require('path');
 const { spawn } = require('child_process');
+const archiver = require('archiver');
 
 // Middleware to check if user is authenticated
 const isAuthenticated = (req, res, next) => {
@@ -282,41 +283,90 @@ router.post('/:id/mods/download-bulk', async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"`);
     res.setHeader('Content-Type', 'application/zip');
     
-    // Create zip archive using docker exec
-    let zipCommand;
-    if (downloadAll) {
-      // Zip all files in the mods directory
-      zipCommand = ['exec', containerName, 'sh', '-c', `cd "${modsPath}" && find . -type f -print0 | zip -0 - -@`];
-    } else {
-      // Zip specific files
-      const fileList = files.map(f => `"${f}"`).join(' ');
-      zipCommand = ['exec', containerName, 'sh', '-c', `cd "${modsPath}" && zip - ${fileList}`];
-    }
-    
-    const dockerExec = spawn('docker', zipCommand, {
-      stdio: ['pipe', 'pipe', 'pipe']
+    // Create zip archive using archiver
+    const archive = archiver('zip', {
+      zlib: { level: 6 } // Compression level (0-9)
     });
     
-    dockerExec.stdout.pipe(res);
-    
-    dockerExec.stderr.on('data', (data) => {
-      console.error('Docker exec error:', data.toString());
-    });
-    
-    dockerExec.on('close', (code) => {
-      if (code !== 0) {
-        if (!res.headersSent) {
-          res.status(500).json({ message: 'Failed to create zip archive' });
-        }
-      }
-    });
-    
-    dockerExec.on('error', (error) => {
-      console.error('Docker exec spawn error:', error);
+    // Handle archiver errors
+    archive.on('error', (err) => {
+      console.error('Archiver error:', err);
       if (!res.headersSent) {
         res.status(500).json({ message: 'Failed to create zip archive' });
       }
     });
+    
+    // Pipe archive data to the response
+    archive.pipe(res);
+    
+    // Get list of files to download
+    let filesToDownload = [];
+    
+    if (downloadAll) {
+      // Get all files from the mods directory
+      const dockerExec = spawn('docker', ['exec', containerName, 'find', modsPath, '-type', 'f', '-printf', '%P\n'], {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      
+      let output = '';
+      let errorOutput = '';
+      
+      dockerExec.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+      
+      dockerExec.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+      });
+      
+      await new Promise((resolve, reject) => {
+        dockerExec.on('close', (code) => {
+          if (code !== 0) {
+            console.error('Docker exec error:', errorOutput);
+            reject(new Error('Failed to list files'));
+          } else {
+            filesToDownload = output.trim().split('\n').filter(line => line.trim());
+            resolve();
+          }
+        });
+        
+        dockerExec.on('error', (error) => {
+          reject(error);
+        });
+      });
+    } else {
+      filesToDownload = files;
+    }
+    
+    // Add each file to the archive
+    for (const filePath of filesToDownload) {
+      const fullPath = path.posix.join(modsPath, filePath);
+      
+      // Use docker exec to cat the file and add it to the archive
+      const catProcess = spawn('docker', ['exec', containerName, 'cat', fullPath], {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      
+      // Add the file stream to the archive with its relative path
+      archive.append(catProcess.stdout, { name: filePath });
+      
+      // Log any errors but continue with other files
+      catProcess.stderr.on('data', (data) => {
+        console.error(`Error reading file ${filePath}:`, data.toString());
+      });
+      
+      // Wait for the cat process to complete
+      await new Promise((resolve) => {
+        catProcess.on('close', resolve);
+        catProcess.on('error', (err) => {
+          console.error(`Error spawning cat process for ${filePath}:`, err);
+          resolve();
+        });
+      });
+    }
+    
+    // Finalize the archive (this will trigger the 'end' event)
+    await archive.finalize();
     
   } catch (error) {
     console.error('Error creating bulk download:', error);

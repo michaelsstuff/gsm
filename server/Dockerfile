@@ -7,7 +7,8 @@ RUN apk add --no-cache \
     tar \
     gzip \
     pv \
-    coreutils
+    coreutils \
+    zip
 
 WORKDIR /app
 
