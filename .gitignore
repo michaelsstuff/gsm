@@ -46,3 +46,4 @@ backups/
 *.pem
 *.key
 *.crt
+UPGRADE-TASKS.md
