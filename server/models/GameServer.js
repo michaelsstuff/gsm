@@ -126,9 +126,8 @@ const GameServerSchema = new mongoose.Schema({
 });
 
 // Update the 'updatedAt' field on save
-GameServerSchema.pre('save', function(next) {
+GameServerSchema.pre('save', function() {
   this.updatedAt = Date.now();
-  next();
 });
 
 module.exports = mongoose.model('GameServer', GameServerSchema);

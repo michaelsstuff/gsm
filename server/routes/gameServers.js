@@ -175,7 +175,7 @@ router.get('/:id/mods', async (req, res) => {
 // @route   GET /api/servers/:id/mods/download/:filename
 // @desc    Download a specific mod file
 // @access  Public
-router.get('/:id/mods/download/*', async (req, res) => {
+router.get('/:id/mods/download/*filepath', async (req, res) => {
   try {
     const gameServer = await GameServer.findById(req.params.id);
     
@@ -188,7 +188,7 @@ router.get('/:id/mods/download/*', async (req, res) => {
     }
     
     // Get the file path from the URL (everything after /download/)
-    const filePath = req.params[0];
+    const filePath = req.params.filepath.join('/');
     if (!filePath) {
       return res.status(400).json({ message: 'File path not specified' });
     }
