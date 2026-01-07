@@ -96,7 +96,15 @@ const App = () => {
         <footer className="footer mt-5 py-3">
           <div className="container text-center">
             <span className="text-muted" style={{ color: 'var(--text-muted)' }}>
-              Game Server Manager &copy; {new Date().getFullYear()}
+              Licensed under the{' '}
+              <a 
+                href="https://github.com/michaelsstuff/gsm/blob/master/LICENSE" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ color: 'var(--text-muted)', textDecoration: 'underline' }}
+              >
+                Apache License 2.0
+              </a>
             </span>
           </div>
         </footer>
