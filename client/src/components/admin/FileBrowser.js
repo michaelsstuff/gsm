@@ -374,33 +374,44 @@ const FileBrowser = () => {
       return setError('Please select a file to upload');
     }
     
+    const files = Array.from(fileInputRef.current.files);
+    const totalFiles = files.length;
+    
     try {
       setIsUploading(true);
       setUploadProgress(0);
       
-      const file = fileInputRef.current.files[0];
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('path', currentPath);
-      
-      const response = await axios.post(
-        `/api/admin/servers/${id}/files/upload`, 
-        formData, 
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-          onUploadProgress: progressEvent => {
-            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setUploadProgress(progress);
+      // Upload files sequentially to track progress accurately
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('path', currentPath);
+        
+        const response = await axios.post(
+          `/api/admin/servers/${id}/files/upload`, 
+          formData, 
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+            onUploadProgress: progressEvent => {
+              const fileProgress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              const overallProgress = Math.round(((i + fileProgress / 100) * 100) / totalFiles);
+              setUploadProgress(overallProgress);
+            }
           }
-        }
-      );
-      
-      console.log('File uploaded successfully:', response.data);
+        );
+        
+        console.log('File uploaded successfully:', response.data);
+      }
       
       // Show success message
-      setSuccessMessage(`File ${file.name} uploaded successfully!`);
+      if (totalFiles === 1) {
+        setSuccessMessage(`File ${files[0].name} uploaded successfully!`);
+      } else {
+        setSuccessMessage(`${totalFiles} files uploaded successfully!`);
+      }
       setTimeout(() => setSuccessMessage(''), 3000);
       
       // Reset upload state
@@ -778,20 +789,21 @@ const FileBrowser = () => {
         <Modal.Body>
           <Form onSubmit={handleFileUpload}>
             <Form.Group controlId="fileUpload" className="mb-3">
-              <Form.Label>Select File to Upload</Form.Label>
+              <Form.Label>Select File(s) to Upload</Form.Label>
               <Form.Control 
                 type="file" 
                 ref={fileInputRef}
                 disabled={isUploading}
+                multiple
               />
               <Form.Text className="text-muted">
-                File will be uploaded to: {currentPath}
+                File(s) will be uploaded to: {currentPath}
               </Form.Text>
             </Form.Group>
             
             {isUploading && (
               <div className="mb-3">
-                <p className="mb-1">Uploading file... {uploadProgress}%</p>
+                <p className="mb-1">Uploading... {uploadProgress}%</p>
                 <ProgressBar 
                   now={uploadProgress} 
                   label={`${uploadProgress}%`} 
