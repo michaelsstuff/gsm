@@ -21,6 +21,26 @@ Web application for managing game servers running as Docker containers. Features
 - **Docker Integration**: Manages external containers via Docker API
 - **SSL Management**: Simple HTTPS setup via Nginx Proxy Manager web UI
 
+## Screenshots
+
+<details>
+<summary><b>📸 View Application Screenshots</b> (click to expand)</summary>
+
+<div align="center">
+  
+  <img src="docs/images/gameservers_overview.png" alt="Game Servers Overview" width="800"/>
+  <p><em>Server dashboard with real-time status monitoring and quick actions</em></p>
+  
+  <img src="docs/images/gameserver_detail.png" alt="Server Detail View" width="800"/>
+  <p><em>Detailed server information and connection details</em></p>
+  
+  <img src="docs/images/gameserver_detail_admin.png" alt="Admin Control Panel" width="800"/>
+  <p><em>Admin control panel for managing game servers</em></p>
+
+</div>
+
+</details>
+
 ## Architecture
 
 <details>
