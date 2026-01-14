@@ -10,102 +10,229 @@ A web application for managing and monitoring game servers running as Docker con
 - **Docker Integration**: Seamless management via Docker API
 - **User Authentication**: Secure role-based access control
 - **Automated Backups**: Scheduled MongoDB and game server backups with Discord notifications
+- **Nginx Proxy Manager**: Simple SSL/HTTPS management through web UI
 
 ## Technology Stack
 
 - **Backend**: Node.js with Express
 - **Frontend**: React with Bootstrap
 - **Database**: MongoDB
+- **Reverse Proxy**: Nginx Proxy Manager (SSL/HTTPS)
 - **Authentication**: Passport.js with session management
 - **Container Management**: Dockerode
-- **Deployment**: Docker Compose
 
-## Quick Start
+## Quick Start (5 Minutes)
 
 ### Prerequisites
 
 - Docker and Docker Compose installed
-- Domain name (for production)
+- Domain name pointing to your server
+- Ports 80, 81, and 443 available
 
-### Installation
+### Step 1: Create docker-compose.yml
 
-```bash
-# Clone and navigate to repository
-git clone https://github.com/michaelsstuff/gsm.git
-cd gsm
-```
-
-### Configuration
-
-Run the setup helper to create `.env`, generate random secrets, and capture your domain/email:
+Create a new directory and save this as `docker-compose.yml`:
 
 ```bash
-./setup.sh
+mkdir gsm && cd gsm
 ```
 
-The script fills `MONGO_INITDB_ROOT_PASSWORD`, `SESSION_SECRET`, and `JWT_SECRET` with random values, sets `DOMAIN_NAME` and `EMAIL_ADDRESS` from your prompts, and leaves `CLOUDFLARE_API_TOKEN` empty for you to fill if you use Cloudflare DNS.
+Then create `docker-compose.yml` with this content:
 
-Prefer manual setup? Copy the template and edit it yourself:
+```yaml
+services:
+  nginx-proxy-manager:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: gsm-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "81:81"
+    volumes:
+      - npm-data:/data
+      - npm-letsencrypt:/etc/letsencrypt
+    networks:
+      - gsm-network
+    environment:
+      DISABLE_IPV6: ${DISABLE_IPV6:-false}
+
+  mongodb:
+    image: mongo:5.0
+    container_name: gsm-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb-data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD must be set}
+    networks:
+      - gsm-network
+
+  backend:
+    image: michaelsstuff/gsm-backend:latest
+    container_name: gsm-backend
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/api/auth/status', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    ports:
+      - "${API_PORT:-5000}:5000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${BACKUP_PATH:-./backups}:/app/backups
+      - ${GAME_VOLUMES_PATH:-/var/opt/container-volumes}:/app/container-volumes:ro
+      - ${COMPOSE_PATH:-/var/opt/container-compose}:/app/container-compose:ro
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      CLIENT_URL: https://${DOMAIN_NAME:?DOMAIN_NAME must be set}
+      MONGO_URI: mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD}@mongodb:27017/gameserver-manager?authSource=admin
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      BACKUP_PATH: /app/backups
+    networks:
+      - gsm-network
+
+  frontend:
+    image: michaelsstuff/gsm-frontend:latest
+    container_name: gsm-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - gsm-network
+
+networks:
+  gsm-network:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+  npm-data:
+  npm-letsencrypt:
+```
+
+### Step 2: Set Environment Variables
+
+Create a `.env` file with your configuration:
+
+```env
+DOMAIN_NAME=your-domain.com
+MONGO_PASSWORD=<generate with: openssl rand -hex 24>
+SESSION_SECRET=<generate with: openssl rand -hex 48>
+JWT_SECRET=<generate with: openssl rand -hex 48>
+```
+
+Or set them as environment variables:
 
 ```bash
-cp .env.example .env
-vi .env  # or use your preferred editor
+export DOMAIN_NAME="your-domain.com"
+export MONGO_PASSWORD=$(openssl rand -hex 24)
+export SESSION_SECRET=$(openssl rand -hex 48)
+export JWT_SECRET=$(openssl rand -hex 48)
 ```
 
-### SSL Setup (Required Before Starting)
-
-SSL certificates must be configured before starting the application. Choose one option:
-
-**Option 1: Cloudflare DNS Challenge (Recommended for Production)**
-
-Best for most setups - works behind firewalls and doesn't require ports 80/443 open during setup:
+### Step 3: Start Services
 
 ```bash
-./docker-deploy.sh letsencrypt-cloudflare YOUR_CLOUDFLARE_API_TOKEN
+docker compose up -d
 ```
 
-Or set `CLOUDFLARE_API_TOKEN` in `.env` and run:
+Services will start and pull the necessary images. This may take a few minutes on first run.
 
-```bash
-./docker-deploy.sh letsencrypt-cloudflare
-```
+### Step 4: Configure SSL (Nginx Proxy Manager)
 
-**Option 2: Self-Signed Certificates (Development/Testing)**
+> 💡 **Local Testing:** For local testing without a domain, use `localhost` as the Domain Name and skip the SSL tab (access via `http://localhost`).
+> 
+> 📚 **Full Documentation:** See the [official Nginx Proxy Manager guide](https://nginxproxymanager.com/guide/) for advanced configuration options.
 
-Quick setup for local development or testing (will show browser warnings):
+1. **Access NPM Admin UI:** `http://YOUR_SERVER_IP:81`
 
-```bash
-./docker-deploy.sh custom-ssl
-```
+2. **Login with default credentials:**
+   - Email: `admin@example.com`
+   - Password: `changeme`
+   - ⚠️ **Change password immediately!**
 
-**Option 3: Custom Certificates (Production)**
+3. **Add Proxy Host:**
+   - Domain Names: `your-domain.com` (or `localhost` for local testing)
+   - Scheme: `http`
+   - Forward Hostname / IP: `gsm-frontend`
+   - Forward Port: `80`
+   - Block Common Exploits: ✓
+   - Websockets Support: ✓
 
-If you have your own SSL certificates:
+4. **SSL Tab:**
+   - SSL Certificate: Request a new SSL Certificate
+   - Force SSL: ✓
+   - HTTP/2 Support: ✓
+   - HSTS Enabled: ✓
+   - Email Address for Let's Encrypt: your-email@example.com
+   - ⚠️ **Skip this step if using localhost for testing**
 
-```bash
-./docker-deploy.sh custom-ssl /path/to/fullchain.pem /path/to/privkey.pem
-```
+5. **Access your application:** `https://your-domain.com` (or `http://localhost` for local testing)
 
-See [SSL-SETUP.md](SSL-SETUP.md) for detailed configuration options and troubleshooting.
+---
 
-### Start Application
+## First Use
 
-After SSL setup is complete, start the application:
-
-```bash
-./docker-deploy.sh start
-```
-
-### First Use
-
-1. Access `https://your-domain` (or `https://localhost` for development)
+1. Visit `https://your-domain.com`
 2. Register first user (automatically becomes admin)
 3. Login and navigate to Admin Dashboard
 4. Add game servers with Docker container details
 
-### Management Commands
+---
+
+## Development
+
+Want to build from source or contribute? See [DEVELOPMENT.md](DEVELOPMENT.md) for instructions.
+
+---
+
+## Management Commands
 
 ```bash
+# View logs
+docker compose logs -f
+
+# View specific service logs
+docker compose logs -f backend
+
+# Restart services
+docker compose restart
+
+# Stop services
+docker compose down
+
+# Update to latest images (when published)
+docker compose pull
+docker compose up -d
+
+# Backup MongoDB
+docker exec gsm-mongodb mongodump \
+  --username admin \
+  --password YOUR_MONGO_PASSWORD \
+  --authenticationDatabase admin \
+  --db gameserver-manager \
+  --archive=/data/db/backup.gz \
+  --gzip
+```
+
+## Required Volume Mounts
+
+The backend container needs access to manage external game server containers:
+
+- `/var/run/docker.sock` - Docker API access (required)
+- Game server volumes (default: `/var/opt/container-volumes`)
+- Compose files (default: `/var/opt/container-compose`)
+
+Edit paths in `.env` if your setup is different.
 ./docker-deploy.sh start       # Start all containers
 ./docker-deploy.sh stop        # Stop all containers
 ./docker-deploy.sh restart     # Restart containers

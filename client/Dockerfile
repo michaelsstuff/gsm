@@ -21,12 +21,11 @@ FROM nginx:alpine
 # Copy the build output from the build stage
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Copy custom nginx configuration template
-COPY nginx.conf /etc/nginx/templates/default.conf.template
+# Copy custom nginx configuration (direct, no template processing needed)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose ports
+# Expose HTTP port only (HTTPS handled by Nginx Proxy Manager)
 EXPOSE 80
-EXPOSE 443
 
-# Nginx will start via the docker-entrypoint script which processes templates
+# Start nginx
 CMD ["nginx", "-g", "daemon off;"]

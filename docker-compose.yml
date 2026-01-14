@@ -1,4 +1,42 @@
+# ============================================================
+# Game Server Manager - Docker Compose Configuration
+# ============================================================
+# 
+# REQUIRED: Set these environment variables before starting:
+#   - DOMAIN_NAME: Your domain (e.g., gsm.example.com)
+#   - MONGO_PASSWORD: Database password (generate: openssl rand -hex 24)
+#   - SESSION_SECRET: Session secret (generate: openssl rand -hex 48)
+#   - JWT_SECRET: JWT secret (generate: openssl rand -hex 48)
+#
+# QUICK START:
+#   1. Set environment variables in your shell or create .env file
+#   2. Run: docker compose up -d
+#   3. Configure SSL in Nginx Proxy Manager at http://YOUR_IP:81
+#      - Default login: admin@example.com / changeme (CHANGE THIS!)
+#      - Add proxy host: your-domain.com -> gsm-frontend:80
+#   4. Access: https://your-domain.com
+#
+# OPTIONAL: Adjust volume paths for your setup
+# ============================================================
+
 services:
+  # Nginx Proxy Manager - Handles SSL and routing via web UI
+  nginx-proxy-manager:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: gsm-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"      # HTTP
+      - "443:443"    # HTTPS  
+      - "81:81"      # Admin UI - Access at http://YOUR_IP:81
+    volumes:
+      - npm-data:/data
+      - npm-letsencrypt:/etc/letsencrypt
+    networks:
+      - gsm-network
+    environment:
+      DISABLE_IPV6: ${DISABLE_IPV6:-false}
+
   # MongoDB Database
   mongodb:
     image: mongo:5.0
@@ -7,16 +45,20 @@ services:
     volumes:
       - mongodb-data:/data/db
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME:-admin}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:-admin_password}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-admin}
+      # REQUIRED: Set MONGO_PASSWORD environment variable
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD must be set}
     networks:
       - gsm-network
 
   # Backend API Server
   backend:
+    # For development: build from source (default)
     build:
       context: ./server
       dockerfile: Dockerfile
+    # For production: use pre-built image
+    # image: ghcr.io/michaelsstuff/gsm-backend:latest
     container_name: gsm-backend
     restart: unless-stopped
     depends_on:
@@ -30,41 +72,45 @@ services:
     ports:
       - "${API_PORT:-5000}:5000"
     volumes:
+      # REQUIRED: Docker socket for managing game server containers
       - /var/run/docker.sock:/var/run/docker.sock
-      - ${BACKUP_PATH:-/mnt/backup/container}:/app/backups
-      - /var/opt/container-volumes:/app/container-volumes:ro
-      - /var/opt/container-compose:/app/container-compose:ro
+      # Backup storage (adjust path as needed)
+      - ${BACKUP_PATH:-./backups}:/app/backups
+      # REQUIRED: Game server volumes (adjust path to your setup)
+      - ${GAME_VOLUMES_PATH:-/var/opt/container-volumes}:/app/container-volumes:ro
+      # REQUIRED: Compose files for game servers (adjust path to your setup)
+      - ${COMPOSE_PATH:-/var/opt/container-compose}:/app/container-compose:ro
     environment:
-      - NODE_ENV=production
-      - PORT=5000
-      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME:-admin}:${MONGO_INITDB_ROOT_PASSWORD:-admin_password}@mongodb:27017/gameserver-manager?authSource=admin
-      - SESSION_SECRET=${SESSION_SECRET:-change_this_in_production}
-      - JWT_SECRET=${JWT_SECRET:-change_this_in_production}
-      - CLIENT_URL=${CLIENT_URL:-https://${DOMAIN_NAME}}
-      - BACKUP_PATH=/app/backups
+      NODE_ENV: production
+      PORT: 5000
+      # REQUIRED: Set DOMAIN_NAME for proper URL construction
+      CLIENT_URL: https://${DOMAIN_NAME:?DOMAIN_NAME must be set}
+      # REQUIRED: Database connection (uses MONGO_PASSWORD from above)
+      MONGO_URI: mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD}@mongodb:27017/gameserver-manager?authSource=admin
+      # REQUIRED: Set SESSION_SECRET and JWT_SECRET environment variables
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      BACKUP_PATH: /app/backups
     networks:
       - gsm-network
 
-  # Frontend Client (React)
+  # Frontend Client (React + nginx)
   frontend:
+    # For development: build from source (default)
     build:
       context: ./client
       dockerfile: Dockerfile
+    # For production: use pre-built image
+    # image: ghcr.io/michaelsstuff/gsm-frontend:latest
     container_name: gsm-frontend
     restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./data/certbot/conf:/etc/letsencrypt:ro
-    environment:
-      - DOMAIN_NAME=${DOMAIN_NAME:-example.com}
-      - API_URL=http://backend:5000
     networks:
       - gsm-network
+    # No ports exposed - accessed through Nginx Proxy Manager only
+    # NPM will proxy requests to gsm-frontend:80
 
 networks:
   gsm-network:
@@ -72,3 +118,5 @@ networks:
 
 volumes:
   mongodb-data:
+  npm-data:
+  npm-letsencrypt:
