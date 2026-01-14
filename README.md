@@ -189,12 +189,6 @@ Services will start and pull the necessary images. This may take a few minutes o
 
 ---
 
-## Development
-
-Want to build from source or contribute? See [DEVELOPMENT.md](DEVELOPMENT.md) for instructions.
-
----
-
 ## Management Commands
 
 ```bash
@@ -342,6 +336,10 @@ During Docker build, you may see npm warnings about deprecated `lodash.get` and 
 - **Resolution**: Will be resolved automatically when react-ace updates
 
 These warnings can be safely ignored. The deprecated packages use syntax that npm suggests replacing with modern JavaScript features (optional chaining `?.` and `util.isDeepStrictEqual`), but they still function correctly.
+
+## Development & Contributing
+
+Want to build from source or contribute to the project? See [DEVELOPMENT.md](DEVELOPMENT.md) for complete development setup instructions, project structure, and contribution guidelines.
 
 ## Contributing
 
