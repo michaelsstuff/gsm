@@ -4,10 +4,12 @@
 
 ### Core Infrastructure ✅
 
-- Docker Compose orchestration with nginx, backend, MongoDB
-- SSL support for both Let's Encrypt and custom certificates
-- Environment variable configuration with template system
-- Custom deployment script (`docker-deploy.sh`) with all lifecycle operations
+- Docker Compose orchestration with NPM, nginx, backend, MongoDB
+- Nginx Proxy Manager for SSL management via web UI
+- Pre-built Docker images published to Docker Hub
+- GitHub Actions CI/CD for multi-arch builds (amd64, arm64)
+- Environment variable validation in docker-compose.yml
+- Simplified deployment with standard `docker compose` commands
 
 ### Authentication System ✅
 
@@ -70,10 +72,13 @@
 
 ### Documentation
 
+- [x] Deployment guide (consolidated in README)
+- [x] Quick start with NPM SSL setup
+- [x] Troubleshooting common issues
+- [x] Volume mount configuration
 - [ ] API documentation
-- [ ] Deployment troubleshooting guide
-- [ ] Security best practices guide
-- [ ] Development setup instructions
+- [ ] Advanced NPM configurations
+- [ ] Development setup (in DEVELOPMENT.md)
 
 ## Current Status
 
@@ -88,7 +93,8 @@
 - Docker socket permissions require careful host configuration
 - Large file uploads may impact performance
 - Real-time status polling can be resource intensive with many servers
-- SSL certificate renewal requires manual intervention for custom certs
+- NPM default credentials must be changed immediately (security risk)
+- First-time NPM setup requires manual proxy host configuration
 
 ## Success Metrics Achieved
 

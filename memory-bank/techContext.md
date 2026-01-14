@@ -20,9 +20,11 @@
 ### Infrastructure
 
 - **Docker Compose** v3.8+ for orchestration
-- **nginx** for reverse proxy and SSL termination
-- **Let's Encrypt** or custom certificates for SSL
+- **Nginx Proxy Manager** for SSL and reverse proxy (web UI)
+- **nginx** for frontend static file serving (HTTP-only)
+- **Let's Encrypt** via NPM for automated SSL
 - **MongoDB sessions** for authentication persistence
+- **GitHub Actions** for CI/CD and Docker Hub publishing
 
 ## Development Setup
 
@@ -90,12 +92,20 @@
 - Frontend: Webpack builds React to static files
 - Backend: Multi-stage Docker build with Node.js
 - Database: MongoDB container with authentication enabled
+- CI/CD: GitHub Actions builds multi-arch images on version tags
 
 ### Deployment Process
 
-- Use `docker-deploy.sh` script exclusively
-- Never run `docker-compose` commands directly
-- Environment setup handled by deployment script
+- Pull pre-built images from Docker Hub
+- Run `docker compose up -d` to start services
+- Configure SSL through NPM web UI (port 81)
+- Environment variables via `.env` file or shell exports
+
+### Development Process
+
+- Clone repository for local development
+- Use `docker compose` with local build context (not images)
+- See DEVELOPMENT.md for contributor setup
 
 ### Backup Process
 

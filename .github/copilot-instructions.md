@@ -14,7 +14,8 @@ Containerized web application for managing external game server Docker container
 ## Architecture & Critical Data Flow
 
 ### Container Structure
-- **Frontend**: React SPA with nginx (port 80/443 with SSL)
+- **Nginx Proxy Manager**: Web UI for SSL/proxy management (ports 80, 443, 81)
+- **Frontend**: React SPA with nginx (HTTP-only, accessed via NPM)
 - **Backend**: Node.js API (port 5000) with Docker socket access
 - **Database**: MongoDB 5.0 with authentication
 - **External game servers**: Separate Docker containers controlled via API
@@ -31,23 +32,25 @@ Game servers are NOT part of the compose stack. Backend accesses them through:
 
 ### Primary Commands
 ```bash
-# Setup environment (only needed once)
-./setup.sh  # Auto-generates secrets, prompts for domain/email
-
-# SSL setup (REQUIRED before first start)
-./docker-deploy.sh letsencrypt-cloudflare    # Production (Cloudflare DNS)
-./docker-deploy.sh custom-ssl                 # Development (self-signed)
+# Generate secrets for .env file
+export MONGO_PASSWORD=$(openssl rand -hex 24)
+export SESSION_SECRET=$(openssl rand -hex 48)
+export JWT_SECRET=$(openssl rand -hex 48)
+export DOMAIN_NAME="your-domain.com"
 
 # Daily operations
-./docker-deploy.sh start|stop|restart|rebuild|logs|backup
+docker compose up -d      # Start services
+docker compose down       # Stop services
+docker compose restart    # Restart services
+docker compose logs -f    # View logs
+docker compose pull       # Update images
 ```
 
-**NEVER use `docker-compose` directly** - deployment script handles environment loading and runtime detection (Docker vs Podman).
-
 ### Environment Setup
-- First run of `docker-deploy.sh` creates `.env` from `.env.example`
-- `setup.sh` auto-generates `MONGO_INITDB_ROOT_PASSWORD`, `SESSION_SECRET`, `JWT_SECRET`
-- Must set: `DOMAIN_NAME`, `EMAIL_ADDRESS`, `CLOUDFLARE_API_TOKEN` (if using CF DNS)
+- Uses pre-built images from Docker Hub: `michaelsstuff/gsm-backend:latest` and `michaelsstuff/gsm-frontend:latest`
+- Required variables: `DOMAIN_NAME`, `MONGO_PASSWORD`, `SESSION_SECRET`, `JWT_SECRET`
+- Optional: `GAME_VOLUMES_PATH`, `COMPOSE_PATH`, `BACKUP_PATH` (adjust volume mount paths)
+- SSL managed through Nginx Proxy Manager web UI (port 81)
 
 ### Required Volume Mounts
 Backend container needs these host paths:
@@ -169,10 +172,12 @@ Backend requires privileged access to manage external containers:
 - Can manage containers NOT in compose stack
 
 ### SSL/TLS Setup
-Three approaches handled by deployment script:
-1. **Let's Encrypt with Cloudflare DNS**: `letsencrypt-cloudflare` command
-2. **Self-signed certificates**: `custom-ssl` with no args
-3. **Custom certificates**: `custom-ssl /path/to/cert.pem /path/to/key.pem`
+SSL managed through Nginx Proxy Manager:
+1. Access NPM web UI at `http://SERVER_IP:81`
+2. Default login: `admin@example.com` / `changeme`
+3. Add Proxy Host pointing to `gsm-frontend:80`
+4. Request SSL certificate via Let's Encrypt (automatic)
+5. Supports custom certificates and Cloudflare DNS challenge
 
 ### MongoDB Connection String Format
 ```javascript
@@ -204,9 +209,10 @@ await discordWebhook.sendBackupNotification({
 - Web app only stores metadata and controls existing containers
 
 ### SSL Certificate Issues
-- Must run SSL setup command BEFORE first `start`
-- Certificates stored in `./data/certbot/conf/`
-- nginx config expects certs at `/etc/letsencrypt/`
+- Configure SSL through NPM web UI after services start
+- Frontend runs HTTP-only, NPM handles SSL termination
+- Certificates managed by NPM and stored in `npm-letsencrypt` volume
+- DNS must point to server for Let's Encrypt validation
 
 ### Session Persistence
 - Sessions stored in MongoDB, persist across restarts

@@ -2,53 +2,56 @@
 
 ## Current Work Focus
 
-**Status:** HaveIBeenPwned password security integration completed
-**Priority:** Testing and deploying the new password security features
+**Status:** Production-ready containerized deployment with Docker Hub images
+**Priority:** Maintaining and improving simplified deployment workflow
 
 ## Recent Changes
 
-- Integrated HaveIBeenPwned API for password security checking
-- Added `passwordSecurity.js` service using k-anonymity model (SHA-1 hash prefix)
-- Updated authentication routes to block compromised passwords
-- Created `PasswordSecurityChecker` React component with real-time feedback
-- Enhanced registration and profile forms with password security validation
-- Added API endpoint `/api/auth/check-password` for frontend validation
+- **Deployment Simplification:** Removed all bash scripts (setup.sh, docker-deploy.sh, backup scripts)
+- **Nginx Proxy Manager:** Added NPM for simple SSL management via web UI
+- **Docker Hub Images:** Published pre-built images to `michaelsstuff/gsm-backend` and `gsm-frontend`
+- **GitHub Actions CI/CD:** Automated multi-arch builds triggered by version tags
+- **Documentation Consolidation:** Merged all deployment docs into single README (265 lines)
+- **Standalone Compose:** docker-compose.yml with built-in environment validation
 
 ## Next Steps
 
 1. **Immediate:**
-   - Test password security integration in development environment
-   - Rebuild containers using deployment script to include changes
-   - Verify HIBP API integration works correctly
+   - Monitor GitHub Actions workflow for image builds
+   - Test deployment from Docker Hub images on fresh system
+   - Validate NPM SSL setup workflow
 
 2. **Short Term:**
-   - Monitor password security check performance and error handling
-   - Test edge cases (service unavailable, network timeouts)
-   - Document password security feature for users
+   - Gather user feedback on simplified deployment
+   - Add usage examples and common configurations to docs
+   - Consider additional NPM configurations (websockets, rate limiting)
 
 3. **Medium Term:**
-   - Consider adding password strength scoring
+   - Add health checks and monitoring endpoints
    - Implement additional security features (2FA, login attempt limiting)
-   - Monitor security logs and blocked password attempts
+   - Create Docker Hub automated builds for PR testing
 
 ## Active Decisions
 
-**Memory Bank Pattern:** Using modular file structure instead of single memory file for better organization and AI context loading
+**No Bash Scripts:** End users only interact with `docker compose` commands
 
-**Instruction Separation:** Keeping instructions (how to work) separate from memory (facts to remember) for clearer AI guidance
+**NPM for SSL:** Eliminated 315-line deployment script complexity by using NPM web UI
 
-**Documentation Focus:** Prioritizing discoverable patterns over aspirational practices
+**Pre-built Images:** Users pull images from Docker Hub instead of building from source
+
+**Consolidated Docs:** Single README replaces multiple doc files (README, DEPLOYMENT-GUIDE, SSL-SETUP)
 
 ## Current Challenges
 
-- Ensuring memory bank captures all critical project knowledge
-- Balancing completeness with AI token limits
-- Maintaining memory bank accuracy as project evolves
+- Keeping memory bank updated with rapid architectural changes
+- Balancing simplicity for users with flexibility for developers
+- Maintaining backward compatibility while simplifying deployment
 
 ## Recent Discoveries
 
 - Project manages external Docker containers rather than creating them
 - First user registration automatically grants admin privileges
-- Deployment must use custom script, never direct docker-compose
-- MongoDB requires specific authentication database parameter
-- SSL setup has two distinct paths (Let's Encrypt vs custom)
+- **NEW:** NPM can handle SSL for all services through single proxy interface
+- **NEW:** GitHub Actions can sync README to Docker Hub atomically with builds
+- MongoDB requires specific authentication database parameter: `?authSource=admin`
+- **NEW:** Frontend can run HTTP-only when behind NPM reverse proxy

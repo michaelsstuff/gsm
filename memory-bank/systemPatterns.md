@@ -2,9 +2,10 @@
 
 ## Architecture Overview
 
-**Three-Tier Containerized Web Application:**
+**Four-Tier Containerized Web Application:**
 
-- React frontend served by nginx (SSL termination, static files)
+- Nginx Proxy Manager (SSL termination, reverse proxy, web UI)
+- React frontend served by nginx (HTTP-only, static files)
 - Node.js/Express backend API (authentication, Docker integration)
 - MongoDB database (user data, server metadata, session storage)
 
@@ -84,10 +85,14 @@ Frontend Request → Backend API → Docker Service → External Container
 
 ## Deployment Pattern
 
-**Single Command Deployment:** `docker-deploy.sh` handles all lifecycle operations
+**Standard Docker Compose:** Use `docker compose up -d` for deployment
 
-**Environment Configuration:** Auto-generated `.env` from template, must be edited for production
+**Pre-built Images:** Pull from Docker Hub (michaelsstuff/gsm-backend:latest, gsm-frontend:latest)
 
-**SSL Flexibility:** Supports both Let's Encrypt automation and custom certificate upload
+**Environment Configuration:** Manual `.env` file or shell exports with required variables
+
+**SSL via NPM:** Web UI at port 81 for Let's Encrypt or custom certificates
 
 **Volume Mounts:** External paths for backup storage and container data access
+
+**CI/CD:** GitHub Actions builds and publishes images on version tags
