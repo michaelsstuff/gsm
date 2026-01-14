@@ -47,7 +47,7 @@
 - `MONGO_INITDB_ROOT_PASSWORD` - Database password (username is always 'admin')
 - `SESSION_SECRET` - Express session encryption
 - `JWT_SECRET` - Token signing (though sessions are primary)
-- `CLIENT_URL` (optional) - Frontend URL for CORS (defaults to localhost:3000, unnecessary in production with reverse proxy)
+- `CLIENT_URL` (dev only) - CORS origin for local non-containerized development (defaults to localhost:3000)
 
 ## Technical Constraints
 

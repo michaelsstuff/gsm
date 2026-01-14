@@ -53,6 +53,18 @@ docker compose logs -f
 
 For faster iteration during development, you can run services locally.
 
+**Environment Setup for Local Dev:**
+
+```bash
+# Set required variables
+export MONGO_INITDB_ROOT_PASSWORD=dev_password_12345
+export SESSION_SECRET=dev_session_secret_12345
+export JWT_SECRET=dev_jwt_secret_12345
+
+# Set CLIENT_URL for CORS (frontend will be on localhost:3000)
+export CLIENT_URL=http://localhost:3000
+```
+
 ### Backend
 
 ```bash

@@ -56,7 +56,8 @@ docker compose pull       # Update images
 ### Environment Setup
 - Uses pre-built images from Docker Hub: `michaelsstuff/gsm-backend:latest` and `michaelsstuff/gsm-frontend:latest`
 - Required variables: `MONGO_PASSWORD`, `SESSION_SECRET`, `JWT_SECRET`
-- Optional: `GAME_VOLUMES_PATH`, `COMPOSE_PATH`, `BACKUP_PATH`, `CLIENT_URL` (adjust volume mount paths and CORS origin)
+- Optional: `GAME_VOLUMES_PATH`, `COMPOSE_PATH`, `BACKUP_PATH` (adjust volume mount paths)
+- `CLIENT_URL` not needed in production (only for local non-containerized development)
 - SSL managed through Nginx Proxy Manager web UI (port 81)
 
 ### Required Volume Mounts
