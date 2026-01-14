@@ -74,7 +74,17 @@
 - Use semantic search when unsure about existing implementations
 - Follow the project's pattern of external container management, not creation
 
-## 📖 Markdown Standards
+## � Commit Message Standards
+
+- Follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format
+- Keep commit messages short and concise - avoid verbose descriptions
+- Format: `<type>: <short description>`
+- Common types: `feat`, `fix`, `docs`, `chore`, `ci`, `test`, `refactor`
+- Example: `feat: Add unit tests for password security`
+- Example: `fix: Correct NPM first-time setup instructions`
+- The code changes speak for themselves - no need for lengthy explanations
+
+## �📖 Markdown Standards
 
 - Follow [markdownlint](https://github.com/DavidAnson/markdownlint/) rules for all Markdown files
 - Ensure proper heading hierarchy (headings should increment by one level at a time)

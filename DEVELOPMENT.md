@@ -258,14 +258,18 @@ npm test
 
 ### Commit Messages
 
-Follow conventional commits:
+Follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format - keep messages short and concise:
 
 ```
-feat: Add new game server backup feature
+feat: Add backup scheduling
 fix: Resolve Docker socket permission issue
 docs: Update installation instructions
 chore: Update dependencies
+ci: Add test stage to pipeline
+test: Add auth context tests
 ```
+
+Format: `<type>: <short description>` - let the code changes speak for themselves.
 
 ---
 
