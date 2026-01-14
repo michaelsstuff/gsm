@@ -258,7 +258,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for building from source, project structure
 
 ## License
 
-GNU General Public License v3.0
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](https://github.com/michaelsstuff/gsm/blob/master/LICENSE) file for details.
 
 ## Contributing
 
