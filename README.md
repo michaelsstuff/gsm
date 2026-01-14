@@ -233,13 +233,6 @@ The backend container needs access to manage external game server containers:
 - Compose files (default: `/var/opt/container-compose`)
 
 Edit paths in `.env` if your setup is different.
-./docker-deploy.sh start       # Start all containers
-./docker-deploy.sh stop        # Stop all containers
-./docker-deploy.sh restart     # Restart containers
-./docker-deploy.sh rebuild     # Rebuild and restart
-./docker-deploy.sh logs        # View container logs
-./docker-deploy.sh backup      # Backup MongoDB
-```
 
 ## Game Server Management
 
@@ -256,16 +249,16 @@ The application manages external Docker containers (not part of the compose stac
 ## Security Notes
 
 - **Change all default secrets** in `.env` before production use
-- Use HTTPS in production (enforce via nginx config)
+- **Use HTTPS in production** - configured via Nginx Proxy Manager
 - MongoDB authentication is enabled by default
 - First registered user becomes admin automatically
 - Docker socket access requires appropriate container privileges
 
 ## Troubleshooting
 
-- **Container issues**: Check logs with `./docker-deploy.sh logs`
+- **Container issues**: Check logs with `docker compose logs -f`
 - **Database errors**: Verify MongoDB credentials in `.env`
-- **SSL problems**: Ensure domain DNS points to server
+- **SSL problems**: Ensure domain DNS points to server (and configure in Nginx Proxy Manager)
 - **Docker API errors**: Verify `/var/run/docker.sock` mount permissions
 
 ## Backup System
@@ -274,13 +267,22 @@ The application supports two types of backups with different workflows:
 
 ### MongoDB Database Backups
 
-Backup application data (users, game server metadata, settings) manually or via scheduled tasks:
+Backup application data (users, game server metadata, settings) manually:
 
 ```bash
-./docker-deploy.sh backup
+docker exec gsm-mongodb mongodump \
+  --username admin \
+  --password YOUR_MONGO_PASSWORD \
+  --authenticationDatabase admin \
+  --db gameserver-manager \
+  --archive=/data/db/backup-$(date +%Y%m%d-%H%M%S).gz \
+  --gzip
+
+# Copy backup to host
+docker cp gsm-mongodb:/data/db/backup-*.gz ./backups/
 ```
 
-Backups are stored in the configured `BACKUP_PATH` directory under `mongodb/` subdirectory.
+Backups are stored in the configured `BACKUP_PATH` directory.
 
 ### Game Server Backups
 
