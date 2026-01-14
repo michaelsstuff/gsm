@@ -69,8 +69,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-    ports:
-      - "${API_PORT:-5000}:5000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${BACKUP_PATH:-./backups}:/app/backups
