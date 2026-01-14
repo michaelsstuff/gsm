@@ -47,3 +47,7 @@ backups/
 *.key
 *.crt
 UPGRADE-TASKS.md
+
+# Testing
+coverage/
+.nyc_output/

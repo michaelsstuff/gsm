@@ -208,19 +208,24 @@ See `.github/workflows/build-publish.yml` (to be created) for the CI/CD configur
 
 ## Testing
 
-### Run Unit Tests
+### Unit Tests
 
-Backend:
+Run unit tests locally:
+
 ```bash
+# Backend tests
 cd server
 npm test
-```
 
-Frontend:
-```bash
+# Frontend tests
 cd client
 npm test
 ```
+
+**Note:** Test packages are devDependencies and excluded from production builds via:
+- Backend: `npm install --omit=dev` in Dockerfile
+- Frontend: Multi-stage build only includes compiled output
+- Both: `.dockerignore` excludes test files
 
 ### Manual Testing Checklist
 

@@ -13,3 +13,7 @@ coverage/
 .nyc_output/
 dist/
 logs/
+__tests__/
+*.test.js
+*.spec.js
+jest.config.js

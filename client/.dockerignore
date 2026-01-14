@@ -10,3 +10,11 @@ build/
 .gitignore
 README.md
 *.log
+coverage/
+__tests__/
+*.test.js
+*.test.jsx
+*.spec.js
+*.spec.jsx
+jest.config.js
+setupTests.js
