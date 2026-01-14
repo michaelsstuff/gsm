@@ -138,7 +138,7 @@ docker compose up -d
 > 💡 **Local Testing:** Use `localhost` as Domain Name and skip SSL configuration (access via `http://localhost`).
 
 1. Access NPM: `http://YOUR_SERVER_IP:81`
-2. Login: `admin@example.com` / `changeme` (⚠️ **change immediately!**)
+2. On first visit, register admin account
 3. Add Proxy Host:
    - Domain: `your-domain.com`
    - Forward to: `gsm-frontend` port `80`
