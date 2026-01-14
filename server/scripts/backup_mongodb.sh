@@ -21,7 +21,7 @@ echo "Starting MongoDB backup..."
 mongodump \
     --host mongodb \
     --port 27017 \
-    --username "${MONGO_INITDB_ROOT_USERNAME}" \
+    --username admin \
     --password "${MONGO_INITDB_ROOT_PASSWORD}" \
     --authenticationDatabase admin \
     --db gameserver-manager \

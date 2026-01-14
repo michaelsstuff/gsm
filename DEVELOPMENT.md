@@ -28,7 +28,6 @@ cp .env.example .env
 Edit `.env` and set your values:
 
 ```env
-MONGO_INITDB_ROOT_USERNAME=admin
 MONGO_INITDB_ROOT_PASSWORD=dev_password_12345
 SESSION_SECRET=dev_session_secret_12345
 JWT_SECRET=dev_jwt_secret_12345
@@ -68,7 +67,6 @@ Backend will run on `http://localhost:5000`
 
 ```bash
 docker run -d -p 27017:27017 \
-  -e MONGO_INITDB_ROOT_USERNAME=admin \
   -e MONGO_INITDB_ROOT_PASSWORD=password \
   mongo:5.0
 ```

@@ -52,7 +52,7 @@ services:
     volumes:
       - mongodb-data:/data/db
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-admin}
+      MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD must be set}
     networks:
       - gsm-network
@@ -80,7 +80,7 @@ services:
       NODE_ENV: production
       PORT: 5000
       CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}
-      MONGO_URI: mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD}@mongodb:27017/gameserver-manager?authSource=admin
+      MONGO_URI: mongodb://admin:${MONGO_PASSWORD}@mongodb:27017/gameserver-manager?authSource=admin
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       BACKUP_PATH: /app/backups
