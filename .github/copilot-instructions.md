@@ -218,7 +218,7 @@ await discordWebhook.sendBackupNotification({
 ### SSL Certificate Issues
 - Configure SSL through NPM web UI after services start
 - Frontend runs HTTP-only, NPM handles SSL termination
-- Certificates managed by NPM and stored in `npm-letsencrypt` volume
+- Certificates managed by NPM and stored in `gsm-proxy-letsencrypt` volume
 - DNS must point to server for Let's Encrypt validation
 
 ### Session Persistence

@@ -38,8 +38,8 @@ services:
       - "443:443"
       - "81:81"
     volumes:
-      - npm-data:/data
-      - npm-letsencrypt:/etc/letsencrypt
+      - gsm-proxy-data:/data
+      - gsm-proxy-letsencrypt:/etc/letsencrypt
     networks:
       - gsm-network
     environment:
@@ -103,8 +103,8 @@ networks:
 
 volumes:
   mongodb-data:
-  npm-data:
-  npm-letsencrypt:
+  gsm-proxy-data:
+  gsm-proxy-letsencrypt:
 ```
 
 ### 2. Configure Environment
