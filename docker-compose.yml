@@ -3,7 +3,6 @@
 # ============================================================
 # 
 # REQUIRED: Set these environment variables before starting:
-#   - DOMAIN_NAME: Your domain (e.g., gsm.example.com)
 #   - MONGO_PASSWORD: Database password (generate: openssl rand -hex 24)
 #   - SESSION_SECRET: Session secret (generate: openssl rand -hex 48)
 #   - JWT_SECRET: JWT secret (generate: openssl rand -hex 48)
@@ -83,8 +82,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
-      # REQUIRED: Set DOMAIN_NAME for proper URL construction
-      CLIENT_URL: https://${DOMAIN_NAME:?DOMAIN_NAME must be set}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}
       # REQUIRED: Database connection (uses MONGO_PASSWORD from above)
       MONGO_URI: mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD}@mongodb:27017/gameserver-manager?authSource=admin
       # REQUIRED: Set SESSION_SECRET and JWT_SECRET environment variables

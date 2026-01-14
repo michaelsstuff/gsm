@@ -36,7 +36,6 @@ Game servers are NOT part of the compose stack. Backend accesses them through:
 export MONGO_PASSWORD=$(openssl rand -hex 24)
 export SESSION_SECRET=$(openssl rand -hex 48)
 export JWT_SECRET=$(openssl rand -hex 48)
-export DOMAIN_NAME="your-domain.com"
 
 # Daily operations
 docker compose up -d      # Start services
@@ -48,8 +47,8 @@ docker compose pull       # Update images
 
 ### Environment Setup
 - Uses pre-built images from Docker Hub: `michaelsstuff/gsm-backend:latest` and `michaelsstuff/gsm-frontend:latest`
-- Required variables: `DOMAIN_NAME`, `MONGO_PASSWORD`, `SESSION_SECRET`, `JWT_SECRET`
-- Optional: `GAME_VOLUMES_PATH`, `COMPOSE_PATH`, `BACKUP_PATH` (adjust volume mount paths)
+- Required variables: `MONGO_PASSWORD`, `SESSION_SECRET`, `JWT_SECRET`
+- Optional: `GAME_VOLUMES_PATH`, `COMPOSE_PATH`, `BACKUP_PATH`, `CLIENT_URL` (adjust volume mount paths and CORS origin)
 - SSL managed through Nginx Proxy Manager web UI (port 81)
 
 ### Required Volume Mounts

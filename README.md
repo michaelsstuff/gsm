@@ -79,7 +79,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
-      CLIENT_URL: https://${DOMAIN_NAME:?DOMAIN_NAME must be set}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}
       MONGO_URI: mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD}@mongodb:27017/gameserver-manager?authSource=admin
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
@@ -112,7 +112,6 @@ volumes:
 Create `.env`:
 
 ```env
-DOMAIN_NAME=your-domain.com
 MONGO_PASSWORD=$(openssl rand -hex 24)
 SESSION_SECRET=$(openssl rand -hex 48)
 JWT_SECRET=$(openssl rand -hex 48)
@@ -121,7 +120,6 @@ JWT_SECRET=$(openssl rand -hex 48)
 Or use shell exports:
 
 ```bash
-export DOMAIN_NAME="your-domain.com"
 export MONGO_PASSWORD=$(openssl rand -hex 24)
 export SESSION_SECRET=$(openssl rand -hex 48)
 export JWT_SECRET=$(openssl rand -hex 48)
@@ -218,7 +216,6 @@ Backups execute automatically on schedule or via "Backup Now" button.
 export MONGO_PASSWORD=$(openssl rand -hex 24)
 export SESSION_SECRET=$(openssl rand -hex 48)
 export JWT_SECRET=$(openssl rand -hex 48)
-export DOMAIN_NAME=your-domain.com
 ```
 
 **NPM not accessible on port 81**
@@ -286,7 +283,7 @@ mkdir -p ~/gsm && cd ~/gsm
 cp ~/gsm-backup/docker-compose.yml .
 cp ~/gsm-backup/.env .
 
-# Update .env if needed (DOMAIN_NAME, volume paths)
+# Update .env if needed (volume paths, passwords)
 vim .env
 
 # Start MongoDB

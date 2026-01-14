@@ -47,8 +47,7 @@
 - `MONGO_INITDB_ROOT_USERNAME/PASSWORD` - Database credentials
 - `SESSION_SECRET` - Express session encryption
 - `JWT_SECRET` - Token signing (though sessions are primary)
-- `DOMAIN_NAME` - SSL certificate domain
-- `CLIENT_URL` - Frontend URL for CORS
+- `CLIENT_URL` (optional) - Frontend URL for CORS (defaults to localhost:3000, unnecessary in production with reverse proxy)
 
 ## Technical Constraints
 

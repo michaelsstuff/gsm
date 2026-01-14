@@ -28,7 +28,6 @@ cp .env.example .env
 Edit `.env` and set your values:
 
 ```env
-DOMAIN_NAME=gsm.local.test
 MONGO_INITDB_ROOT_USERNAME=admin
 MONGO_INITDB_ROOT_PASSWORD=dev_password_12345
 SESSION_SECRET=dev_session_secret_12345
