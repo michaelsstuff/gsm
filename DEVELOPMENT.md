@@ -36,34 +36,14 @@ JWT_SECRET=dev_jwt_secret_12345
 BACKUP_PATH=./backups
 ```
 
-### 3. Update docker-compose.yml for Local Builds
-
-Edit `docker-compose.yml` and uncomment the `build:` sections:
-
-```yaml
-backend:
-  build:
-    context: ./server
-    dockerfile: Dockerfile
-  # image: ghcr.io/michaelsstuff/gsm-backend:latest  # Comment this out
-```
-
-```yaml
-frontend:
-  build:
-    context: ./client
-    dockerfile: Dockerfile
-  # image: ghcr.io/michaelsstuff/gsm-frontend:latest  # Comment this out
-```
-
-### 4. Build and Start
+### 3. Build and Start
 
 ```bash
 docker compose build
 docker compose up -d
 ```
 
-### 5. View Logs
+### 4. View Logs
 
 ```bash
 docker compose logs -f
