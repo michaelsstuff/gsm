@@ -8,6 +8,14 @@
 - 📂 **Also load files from active feature folders (e.g. `/memory-bank/features/`)**
 - 📝 **On "/update memory bank", refresh `activeContext.md` & `progress.md`**
 
+## Critical Sync Requirements
+
+**When updating `docker-compose.yml` → ALWAYS update `README.md` compose section (and vice versa)**
+- Both files must have identical service configurations
+- Exception: `docker-compose.yml` uses `build:` for local development, `README.md` uses `image:` for published images
+- Example: `docker-compose.yml` has `build: context: ./server`, `README.md` has `image: michaelsstuff/gsm-backend:latest`
+- Keep environment variables, volumes, networks, ports, and all other settings synchronized
+
 ## Project Overview
 Containerized web application for managing external game server Docker containers. Three-tier architecture: React/nginx frontend, Node.js/Express backend, MongoDB database. **Key distinction**: App runs in containers but manages *external* containers via Docker socket - it does NOT create/destroy game servers.
 
