@@ -1,43 +1,31 @@
 # Game Server Manager
 
-A web application for managing and monitoring game servers running as Docker containers. Provides a user-friendly interface to check server status, view connection details, and control game servers through a secure admin interface.
+Web application for managing game servers running as Docker containers. Features real-time status monitoring, backup scheduling, and Discord notifications via a secure admin interface.
 
 ## Features
 
-- **Server Status Dashboard**: Real-time status indicators for all game servers
-- **Server Details**: Connection strings, logos, Steam links, and website links
-- **Admin Control Panel**: Start, stop, restart, and backup game servers
-- **Docker Integration**: Seamless management via Docker API
-- **User Authentication**: Secure role-based access control
-- **Automated Backups**: Scheduled MongoDB and game server backups with Discord notifications
-- **Nginx Proxy Manager**: Simple SSL/HTTPS management through web UI
+- **Server Dashboard**: Real-time status indicators and connection details
+- **Admin Control**: Start, stop, restart, and backup game servers
+- **Automated Backups**: Scheduled backups with Discord webhook notifications
+- **User Authentication**: Role-based access control (first user becomes admin)
+- **Docker Integration**: Manages external containers via Docker API
+- **SSL Management**: Simple HTTPS setup via Nginx Proxy Manager web UI
 
-## Technology Stack
-
-- **Backend**: Node.js with Express
-- **Frontend**: React with Bootstrap
-- **Database**: MongoDB
-- **Reverse Proxy**: Nginx Proxy Manager (SSL/HTTPS)
-- **Authentication**: Passport.js with session management
-- **Container Management**: Dockerode
-
-## Quick Start (5 Minutes)
+## Quick Start
 
 ### Prerequisites
 
-- Docker and Docker Compose installed
+- Docker and Docker Compose
 - Domain name pointing to your server
 - Ports 80, 81, and 443 available
 
-### Step 1: Create docker-compose.yml
-
-Create a new directory and save this as `docker-compose.yml`:
+### 1. Create docker-compose.yml
 
 ```bash
 mkdir gsm && cd gsm
 ```
 
-Then create `docker-compose.yml` with this content:
+Create `docker-compose.yml`:
 
 ```yaml
 services:
@@ -119,18 +107,18 @@ volumes:
   npm-letsencrypt:
 ```
 
-### Step 2: Set Environment Variables
+### 2. Configure Environment
 
-Create a `.env` file with your configuration:
+Create `.env`:
 
 ```env
 DOMAIN_NAME=your-domain.com
-MONGO_PASSWORD=<generate with: openssl rand -hex 24>
-SESSION_SECRET=<generate with: openssl rand -hex 48>
-JWT_SECRET=<generate with: openssl rand -hex 48>
+MONGO_PASSWORD=$(openssl rand -hex 24)
+SESSION_SECRET=$(openssl rand -hex 48)
+JWT_SECRET=$(openssl rand -hex 48)
 ```
 
-Or set them as environment variables:
+Or use shell exports:
 
 ```bash
 export DOMAIN_NAME="your-domain.com"
@@ -139,74 +127,49 @@ export SESSION_SECRET=$(openssl rand -hex 48)
 export JWT_SECRET=$(openssl rand -hex 48)
 ```
 
-### Step 3: Start Services
+### 3. Start Services
 
 ```bash
 docker compose up -d
 ```
 
-Services will start and pull the necessary images. This may take a few minutes on first run.
+### 4. Configure SSL
 
-### Step 4: Configure SSL (Nginx Proxy Manager)
+> 💡 **Local Testing:** Use `localhost` as Domain Name and skip SSL configuration (access via `http://localhost`).
 
-> 💡 **Local Testing:** For local testing without a domain, use `localhost` as the Domain Name and skip the SSL tab (access via `http://localhost`).
-> 
-> 📚 **Full Documentation:** See the [official Nginx Proxy Manager guide](https://nginxproxymanager.com/guide/) for advanced configuration options.
+1. Access NPM: `http://YOUR_SERVER_IP:81`
+2. Login: `admin@example.com` / `changeme` (⚠️ **change immediately!**)
+3. Add Proxy Host:
+   - Domain: `your-domain.com`
+   - Forward to: `gsm-frontend` port `80`
+   - Enable: Block Common Exploits, Websockets Support
+4. SSL Tab: Request SSL Certificate, enable Force SSL and HSTS
+5. Access: `https://your-domain.com`
 
-1. **Access NPM Admin UI:** `http://YOUR_SERVER_IP:81`
+📚 Full NPM guide: https://nginxproxymanager.com/guide/
 
-2. **Login with default credentials:**
-   - Email: `admin@example.com`
-   - Password: `changeme`
-   - ⚠️ **Change password immediately!**
+### 5. First Use
 
-3. **Add Proxy Host:**
-   - Domain Names: `your-domain.com` (or `localhost` for local testing)
-   - Scheme: `http`
-   - Forward Hostname / IP: `gsm-frontend`
-   - Forward Port: `80`
-   - Block Common Exploits: ✓
-   - Websockets Support: ✓
-
-4. **SSL Tab:**
-   - SSL Certificate: Request a new SSL Certificate
-   - Force SSL: ✓
-   - HTTP/2 Support: ✓
-   - HSTS Enabled: ✓
-   - Email Address for Let's Encrypt: your-email@example.com
-   - ⚠️ **Skip this step if using localhost for testing**
-
-5. **Access your application:** `https://your-domain.com` (or `http://localhost` for local testing)
+1. Register first user (auto-admin)
+2. Login → Admin Dashboard
+3. Add game servers with Docker container names
 
 ---
 
-## First Use
-
-1. Visit `https://your-domain.com`
-2. Register first user (automatically becomes admin)
-3. Login and navigate to Admin Dashboard
-4. Add game servers with Docker container details
-
----
-
-## Management Commands
+## Management
 
 ```bash
 # View logs
 docker compose logs -f
 
-# View specific service logs
-docker compose logs -f backend
+# Update images
+docker compose pull && docker compose up -d
 
-# Restart services
+# Restart
 docker compose restart
 
-# Stop services
+# Stop
 docker compose down
-
-# Update to latest images (when published)
-docker compose pull
-docker compose up -d
 
 # Backup MongoDB
 docker exec gsm-mongodb mongodump \
@@ -218,129 +181,85 @@ docker exec gsm-mongodb mongodump \
   --gzip
 ```
 
-## Required Volume Mounts
+## Volume Mounts
 
-The backend container needs access to manage external game server containers:
+Backend requires these mounts to manage external game servers:
 
 - `/var/run/docker.sock` - Docker API access (required)
-- Game server volumes (default: `/var/opt/container-volumes`)
-- Compose files (default: `/var/opt/container-compose`)
+- `/var/opt/container-volumes` - Game server data (read-only)
+- `/var/opt/container-compose` - Compose files (read-only)
+- `./backups` - Backup storage
 
-Edit paths in `.env` if your setup is different.
+Adjust paths in `.env` if different:
 
-## Game Server Management
+```env
+GAME_VOLUMES_PATH=/your/path
+COMPOSE_PATH=/your/path
+BACKUP_PATH=/your/path
+```
 
-Add servers through the admin interface with:
+## Game Server Backups
 
-- Server name and description
-- Docker container name
-- Connection details
-- Optional: Logo URL, Steam App ID, website link
-- Backup schedule and Discord webhook notifications
+Configure automated backups per server via Admin Dashboard:
 
-The application manages external Docker containers (not part of the compose stack) via the mounted Docker socket.
+- **Cron Schedule**: e.g., `0 2 * * *` for daily at 2 AM
+- **Retention**: Number of backups to keep
+- **Discord Webhook**: Optional notifications
 
-## Security Notes
-
-- **Change all default secrets** in `.env` before production use
-- **Use HTTPS in production** - configured via Nginx Proxy Manager
-- MongoDB authentication is enabled by default
-- First registered user becomes admin automatically
-- Docker socket access requires appropriate container privileges
+Backups execute automatically on schedule or via "Backup Now" button.
 
 ## Troubleshooting
 
-- **Container issues**: Check logs with `docker compose logs -f`
-- **Database errors**: Verify MongoDB credentials in `.env`
-- **SSL problems**: Ensure domain DNS points to server (and configure in Nginx Proxy Manager)
-- **Docker API errors**: Verify `/var/run/docker.sock` mount permissions
-
-## Backup System
-
-The application supports two types of backups with different workflows:
-
-### MongoDB Database Backups
-
-Backup application data (users, game server metadata, settings) manually:
-
+**"MONGO_PASSWORD must be set"**
 ```bash
-docker exec gsm-mongodb mongodump \
-  --username admin \
-  --password YOUR_MONGO_PASSWORD \
-  --authenticationDatabase admin \
-  --db gameserver-manager \
-  --archive=/data/db/backup-$(date +%Y%m%d-%H%M%S).gz \
-  --gzip
-
-# Copy backup to host
-docker cp gsm-mongodb:/data/db/backup-*.gz ./backups/
+export MONGO_PASSWORD=$(openssl rand -hex 24)
+export SESSION_SECRET=$(openssl rand -hex 48)
+export JWT_SECRET=$(openssl rand -hex 48)
+export DOMAIN_NAME=your-domain.com
 ```
 
-Backups are stored in the configured `BACKUP_PATH` directory.
+**NPM not accessible on port 81**
+- Check port usage: `sudo netstat -tlnp | grep :81`
+- Check logs: `docker compose logs nginx-proxy-manager`
 
-### Game Server Backups
+**SSL certificate fails**
+- Verify DNS points to server
+- Ensure ports 80/443 open
+- For Cloudflare, use DNS challenge in NPM
 
-Automated backups of game server data configured individually per server through the admin dashboard:
+**Backend can't connect to MongoDB**
+- Verify `MONGO_PASSWORD` is set
+- Check logs: `docker compose logs mongodb`
 
-**Setup Process:**
+**Game server management not working**
+- Verify socket mount: `docker inspect gsm-backend | grep docker.sock`
+- Check containers exist: `docker ps -a`
+- Verify volume paths match your setup
 
-1. Navigate to Admin Dashboard → Server Settings
-2. Configure backup schedule:
-   - **Cron Expression**: Define schedule (e.g., `0 2 * * *` for daily at 2 AM)
-   - **Retention Policy**: Number of backups to keep (older backups auto-deleted)
-   - **Discord Webhook** (optional): URL for backup notifications
+## Security
 
-**How It Works:**
+- Change NPM default password immediately
+- Generate strong secrets: `openssl rand -hex 48`
+- Use HTTPS in production
+- First registered user gets admin role automatically
+- Backend needs Docker socket access (privileged)
 
-- Backup jobs register automatically on application startup
-- `backupScheduler.js` uses node-cron to execute scheduled backups
-- When triggered, the server is stopped, data is archived, then server restarts
-- Backups are stored in `BACKUP_PATH` as compressed tar.gz files
-- Old backups are automatically pruned based on retention policy
-- Discord notifications sent on completion/failure (if webhook configured)
+## Technology Stack
 
-**Requirements:**
+- **Backend**: Node.js, Express, Dockerode
+- **Frontend**: React, Bootstrap
+- **Database**: MongoDB 5.0
+- **Proxy**: Nginx Proxy Manager
+- **Auth**: Passport.js with sessions
 
-Configure these paths in `.env`:
+## Development
 
-```bash
-# Backup storage location (host path)
-BACKUP_PATH=/mnt/backup/container
-```
-
-The backend container requires these volume mounts (automatically configured in docker-compose.yml):
-
-- `BACKUP_PATH:/app/backups` - Backup destination
-- `/var/opt/container-volumes:/app/container-volumes:ro` - Game server data (read-only)
-- `/var/opt/container-compose:/app/container-compose:ro` - Compose files (read-only)
-
-**Manual Backup:**
-
-Backup any server immediately via the admin interface "Backup Now" button, which executes the backup process outside the normal schedule.
+See [DEVELOPMENT.md](DEVELOPMENT.md) for building from source, project structure, and contribution guidelines.
 
 ## License
 
-GNU General Public License v3.0 - See `LICENSE` file
-
-## Known Issues
-
-### Build Warnings
-
-**lodash.get and lodash.isequal deprecation warnings:**
-During Docker build, you may see npm warnings about deprecated `lodash.get` and `lodash.isequal` packages. These are transitive dependencies of `react-ace` (used for the file browser code editor) and cannot be resolved until react-ace updates their dependencies. 
-
-- **Impact**: None - these are build-time warnings only
-- **Security**: No security vulnerabilities
-- **Functionality**: All features work correctly
-- **Tracking**: react-ace v14.0.1 (latest) still uses these packages
-- **Resolution**: Will be resolved automatically when react-ace updates
-
-These warnings can be safely ignored. The deprecated packages use syntax that npm suggests replacing with modern JavaScript features (optional chaining `?.` and `util.isDeepStrictEqual`), but they still function correctly.
-
-## Development & Contributing
-
-Want to build from source or contribute to the project? See [DEVELOPMENT.md](DEVELOPMENT.md) for complete development setup instructions, project structure, and contribution guidelines.
+GNU General Public License v3.0
 
 ## Contributing
 
-Contributions welcome! Please submit pull requests or open issues for bugs and feature requests.
+Issues and pull requests welcome: https://github.com/michaelsstuff/gsm
