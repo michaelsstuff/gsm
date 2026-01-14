@@ -324,10 +324,6 @@ The backend container requires these volume mounts (automatically configured in 
 
 Backup any server immediately via the admin interface "Backup Now" button, which executes the backup process outside the normal schedule.
 
-**Implementation Details:**
-
-See [server/utils/backupScheduler.js](server/utils/backupScheduler.js) for scheduling logic and [server/scripts/backup_container.sh](server/scripts/backup_container.sh) for backup execution.
-
 ## License
 
 GNU General Public License v3.0 - See `LICENSE` file
