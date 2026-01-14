@@ -1,5 +1,15 @@
 # Game Server Manager
 
+[![Build and Publish](https://github.com/michaelsstuff/gsm/actions/workflows/build-publish.yml/badge.svg)](https://github.com/michaelsstuff/gsm/actions/workflows/build-publish.yml)
+[![Docker Backend](https://img.shields.io/docker/v/michaelsstuff/gsm-backend?label=backend&logo=docker)](https://hub.docker.com/r/michaelsstuff/gsm-backend)
+[![Docker Frontend](https://img.shields.io/docker/v/michaelsstuff/gsm-frontend?label=frontend&logo=docker)](https://hub.docker.com/r/michaelsstuff/gsm-frontend)
+[![Docker Pulls](https://img.shields.io/docker/pulls/michaelsstuff/gsm-backend?logo=docker)](https://hub.docker.com/r/michaelsstuff/gsm-backend)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+![Node.js](https://img.shields.io/badge/Node.js-18+-green?logo=node.js)
+![React](https://img.shields.io/badge/React-18+-blue?logo=react)
+![MongoDB](https://img.shields.io/badge/MongoDB-5.0-green?logo=mongodb)
+![Docker](https://img.shields.io/badge/Docker-Required-blue?logo=docker)
+
 Web application for managing game servers running as Docker containers. Features real-time status monitoring, backup scheduling, and Discord notifications via a secure admin interface.
 
 ## Features
