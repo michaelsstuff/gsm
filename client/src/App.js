@@ -16,14 +16,22 @@ import ComposeEditor from './components/admin/ComposeEditor';
 import { useAuth } from './context/AuthContext';
 import './App.css';
 
+
 // Protected route component
 const AdminRoute = ({ children }) => {
-  const { isAuthenticated, user } = useAuth();
-  
+  const { isAuthenticated, user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '40vh' }}>
+        <div className="spinner-border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
   if (!isAuthenticated || (user && user.role !== 'admin')) {
     return <Navigate to="/login" replace />;
   }
-  
   return children;
 };
 
