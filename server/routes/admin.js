@@ -259,8 +259,18 @@ router.delete('/servers/:id', isAdmin, async (req, res) => {
       return res.status(404).json({ message: 'Game server not found' });
     }
 
+    // If managed by Compose, update ComposeFile
+    if (gameServer.isManaged && gameServer.composeFile) {
+      const ComposeFile = require('../models/ComposeFile');
+      const composeFile = await ComposeFile.findById(gameServer.composeFile);
+      if (composeFile) {
+        composeFile.status = 'stopped';
+        composeFile.gameServer = null;
+        await composeFile.save();
+      }
+    }
+
     await gameServer.deleteOne();
-    
     res.json({ message: 'Game server removed' });
   } catch (error) {
     console.error('Error deleting game server:', error);
