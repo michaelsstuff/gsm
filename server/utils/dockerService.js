@@ -10,6 +10,22 @@ const discordWebhook = require('./discordWebhook');
  * Docker service to interact with Docker containers
  */
 const dockerService = {
+
+    /**
+     * Remove (delete) a Docker container by name
+     * @param {string} containerName - Name of the container
+     * @returns {Promise<boolean>} - True if successful
+     */
+    async removeContainer(containerName) {
+      try {
+        const container = docker.getContainer(containerName);
+        await container.remove({ force: true });
+        return true;
+      } catch (error) {
+        console.error(`Error removing container ${containerName}:`, error);
+        return false;
+      }
+    },
   /**
    * Check if a container exists
    * @param {string} containerName - Name of the container

@@ -617,17 +617,26 @@ router.post('/validate-content', isAdmin, async (req, res) => {
       return res.status(400).json({ message: 'Content is required' });
     }
     
-    // Get all existing container names
+
+    // Get all actual Docker container names
+    let dockerContainerNames = [];
+    try {
+      const containers = await dockerService.listContainers();
+      dockerContainerNames = containers.map(c => c.name);
+    } catch (err) {
+      console.error('Error listing Docker containers:', err);
+    }
+
+    // Get all managed GameServer container names
     const existingServers = await GameServer.find({}, 'containerName');
-    const existingComposeFiles = await ComposeFile.find({ containerName: { $ne: null } }, 'containerName');
-    const existingNames = [
-      ...existingServers.map(s => s.containerName),
-      ...existingComposeFiles.map(c => c.containerName)
-    ];
-    
+    const managedNames = existingServers.map(s => s.containerName);
+
+    // Only block if name is in use by a real container or managed server
+    const existingNames = [...new Set([...dockerContainerNames, ...managedNames])];
+
     // Skip docker validation for faster response
     const validation = await composeValidator.validateComposeFile(
-      content, 
+      content,
       existingNames,
       true  // skipDockerValidation
     );

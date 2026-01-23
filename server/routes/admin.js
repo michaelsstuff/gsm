@@ -262,31 +262,30 @@ router.put('/servers/:id', isAdmin, async (req, res) => {
 router.delete('/servers/:id', isAdmin, async (req, res) => {
   try {
     const gameServer = await GameServer.findById(req.params.id);
-    
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
     }
 
-    // If managed by Compose, update ComposeFile
-    if (gameServer.isManaged && gameServer.composeFile) {
-      const ComposeFile = require('../models/ComposeFile');
-      const composeFile = await ComposeFile.findById(gameServer.composeFile);
-      if (composeFile) {
-        composeFile.status = 'stopped';
-        composeFile.gameServer = null;
-        await composeFile.save();
+    // Remove the Docker container if it exists
+    const dockerService = require('../utils/dockerService');
+    if (gameServer.containerName) {
+      try {
+        const exists = await dockerService.containerExists(gameServer.containerName);
+        if (exists) {
+          await dockerService.removeContainer(gameServer.containerName);
+        }
+      } catch (err) {
+        console.error('Error removing Docker container:', err);
       }
     }
 
     await gameServer.deleteOne();
-    res.json({ message: 'Game server removed' });
+    res.json({ message: 'Game server and Docker container removed' });
   } catch (error) {
     console.error('Error deleting game server:', error);
-    
     if (error.kind === 'ObjectId') {
       return res.status(404).json({ message: 'Game server not found' });
     }
-    
     res.status(500).json({ message: 'Server error' });
   }
 });
