@@ -182,7 +182,7 @@ Backend requires privileged access to manage external containers:
 ### SSL/TLS Setup
 SSL managed through Nginx Proxy Manager:
 1. Access NPM web UI at `http://SERVER_IP:81`
-2. Default login: `admin@example.com` / `changeme`
+2. On first visit, register your admin account
 3. Add Proxy Host pointing to `gsm-frontend:80`
 4. Request SSL certificate via Let's Encrypt (automatic)
 5. Supports custom certificates and Cloudflare DNS challenge

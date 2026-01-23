@@ -78,7 +78,7 @@
 - [x] Volume mount configuration
 - [ ] API documentation
 - [ ] Advanced NPM configurations
-- [ ] Development setup (in DEVELOPMENT.md)
+- [ ] Development setup (in docs/development.md)
 
 ## Current Status
 

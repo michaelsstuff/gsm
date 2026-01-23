@@ -104,7 +104,7 @@
 
 - Clone repository for local development
 - Use `docker compose` with local build context (not images)
-- See DEVELOPMENT.md for contributor setup
+- See docs/development.md for contributor setup
 
 ### Backup Process
 

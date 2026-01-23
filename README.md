@@ -12,6 +12,37 @@
 
 Web application for managing game servers running as Docker containers. Features real-time status monitoring, backup scheduling, and Discord notifications via a secure admin interface.
 
+## Table of Contents
+
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Management](#management)
+- [Volume Mounts](#volume-mounts)
+- [Game Server Backups](#game-server-backups)
+- [Troubleshooting](#troubleshooting)
+- [Migration Guide](#migration-guide)
+- [Development](#development)
+- [License](#license)
+- [Contributing](#contributing)
+
+## What This Is (and Isn't)
+
+**GSM is a management interface** for game servers that already exist as Docker containers. It provides a web UI to:
+- Monitor status of your game server containers
+- Start, stop, and restart containers
+- Schedule and manage backups
+- View server details and connection info
+
+**GSM does NOT:**
+- Create or provision new game servers
+- Install game server software
+- Manage game server configurations
+- Replace tools like LinuxGSM, AMP, or Pterodactyl
+
+Your game servers must already be running as Docker containers before adding them to GSM.
+
 ## Features
 
 - **Server Dashboard**: Real-time status indicators and connection details
@@ -43,71 +74,21 @@ Web application for managing game servers running as Docker containers. Features
 
 ## Architecture
 
-<details>
-<summary><b>Traffic Flow & Security Model</b> (click to expand)</summary>
-
-### Traffic Flow
-
-```mermaid
-flowchart TB
-    Client[("👤 Client Browser")]
-    NPM["🔒 Nginx Proxy Manager<br/>(gsm-proxy)<br/>Ports: 80, 443, 81"]
-    Frontend["📱 Frontend Container<br/>(gsm-frontend)<br/>nginx + React SPA<br/>Internal port: 80"]
-    Backend["⚙️ Backend Container<br/>(gsm-backend)<br/>Node.js + Express<br/>Internal port: 5000"]
-    MongoDB["🗄️ MongoDB<br/>(gsm-mongodb)<br/>Internal port: 27017"]
-    Docker["🐳 Docker Socket<br/>/var/run/docker.sock"]
-    GameServers["🎮 External Game<br/>Server Containers"]
-    
-    Client <-->|"HTTPS (443)<br/>your-domain.com<br/>Static files & API calls"| NPM
-    NPM <-->|"HTTP (80)<br/>SSL Termination<br/>Proxies all requests"| Frontend
-    Frontend -->|"Proxies /api/*<br/>to backend:5000"| Backend
-    Backend -->|"Response"| Frontend
-    Backend <-->|"Auth & Data"| MongoDB
-    Backend -->|"Container Control"| Docker
-    Docker -.->|"Manage"| GameServers
-    
-    style Client fill:#e1f5ff
-    style NPM fill:#fff4e1
-    style Frontend fill:#e8f5e9
-    style Backend fill:#f3e5f5
-    style MongoDB fill:#fce4ec
-    style Docker fill:#e0f2f1
-    style GameServers fill:#fff3e0
-    
-    subgraph "Internet"
-        Client
-    end
-    
-    subgraph "Docker Network (gsm-network)"
-        NPM
-        Frontend
-        Backend
-        MongoDB
-    end
-    
-    subgraph "Host System"
-        Docker
-        GameServers
-    end
-```
-
-### Security Model
-
-- **🔒 SSL/TLS**: All external traffic encrypted via Nginx Proxy Manager
-- **🔐 Internal Communication**: Containers communicate over isolated Docker network (HTTP only)
-- **🚫 No Direct Access**: Backend and database not exposed to internet
-- **🛡️ Single Entry Point**: Only ports 80, 443 (NPM) and 81 (NPM admin) accessible externally
-
-### Key Design Decisions
-
-1. **Frontend as Reverse Proxy**: Client never connects directly to backend - all API calls proxied through frontend nginx
-2. **No Port Exposure**: Backend has no host port mapping, only accessible via Docker network
-3. **SSL Termination at Edge**: NPM handles all SSL/TLS, internal services use HTTP
-4. **External Container Management**: Game servers exist outside compose stack, managed via Docker socket
-
-</details>
+See [docs/architecture.md](docs/architecture.md) for traffic flow diagrams and security model.
 
 ## Quick Start
+
+### TL;DR (for experienced users)
+
+```bash
+mkdir gsm && cd gsm
+curl -O https://raw.githubusercontent.com/michaelsstuff/gsm/main/docker-compose.yml
+export MONGO_PASSWORD=$(openssl rand -hex 24)
+export SESSION_SECRET=$(openssl rand -hex 48)
+export JWT_SECRET=$(openssl rand -hex 48)
+docker compose up -d
+# Configure SSL at http://YOUR_IP:81, then access https://your-domain.com
+```
 
 ### Prerequisites
 
@@ -302,163 +283,19 @@ Backups execute automatically on schedule or via "Backup Now" button.
 
 ## Troubleshooting
 
-<details>
-<summary><b>Common Issues</b> (click to expand)</summary>
-
-**"MONGO_PASSWORD must be set"**
-```bash
-export MONGO_PASSWORD=$(openssl rand -hex 24)
-export SESSION_SECRET=$(openssl rand -hex 48)
-export JWT_SECRET=$(openssl rand -hex 48)
-```
-
-**NPM not accessible on port 81**
-- Check port usage: `sudo netstat -tlnp | grep :81`
-- Check logs: `docker compose logs nginx-proxy-manager`
-
-**SSL certificate fails**
-- Verify DNS points to server
-- Ensure ports 80/443 open
-- For Cloudflare, use DNS challenge in NPM
-
-**Backend can't connect to MongoDB**
-- Verify `MONGO_PASSWORD` is set
-- Check logs: `docker compose logs mongodb`
-
-**Game server management not working**
-- Verify socket mount: `docker inspect gsm-backend | grep docker.sock`
-- Check containers exist: `docker ps -a`
-- Verify volume paths match your setup
-
-</details>
+See [docs/troubleshooting.md](docs/troubleshooting.md) for common issues and solutions.
 
 ## Migration Guide
 
-<details>
-<summary><b>Migrating GSM to a New Server</b> (click to expand)</summary>
-
-**Prerequisites:** Docker/Podman with Compose plugin installed on new server, DNS updated to point to new IP.
-
-#### Step 1: Backup Old System
-
-```bash
-cd /path/to/old/gsm
-docker compose down
-
-# Create backup directory
-mkdir -p ~/gsm-backup
-
-# Export MongoDB
-docker compose up -d mongodb
-docker exec gsm-mongodb mongodump \
-  --username admin \
-  --password YOUR_MONGO_PASSWORD \
-  --authenticationDatabase admin \
-  --db gameserver-manager \
-  --archive=/data/db/gsm-backup.gz \
-  --gzip
-
-docker cp gsm-mongodb:/data/db/gsm-backup.gz ~/gsm-backup/
-docker compose down
-
-# Copy configuration and backups
-cp .env docker-compose.yml ~/gsm-backup/
-cp -r ./backups ~/gsm-backup/ 2>/dev/null || true
-```
-
-Copy `~/gsm-backup` to new server (use your preferred method).
-
-#### Step 2: Install on New System
-
-```bash
-mkdir -p ~/gsm && cd ~/gsm
-
-# Copy files from backup
-cp ~/gsm-backup/docker-compose.yml .
-cp ~/gsm-backup/.env .
-
-# Update .env if needed (volume paths, passwords)
-vim .env
-
-# Start MongoDB
-docker compose up -d mongodb
-sleep 10
-```
-
-#### Step 3: Restore Data
-
-```bash
-# Import database
-docker cp ~/gsm-backup/gsm-backup.gz gsm-mongodb:/tmp/
-docker exec gsm-mongodb mongorestore \
-  --username admin \
-  --password $MONGO_PASSWORD \
-  --authenticationDatabase admin \
-  --archive=/tmp/gsm-backup.gz \
-  --gzip \
-  --drop
-
-# Restore backups (optional)
-cp -r ~/gsm-backup/backups/* ./backups/ 2>/dev/null || true
-
-# Start all services
-docker compose up -d
-```
-
-#### Step 4: Migrate Game Servers
-
-Migrate your game server containers to the new system. Once running, update container names in GSM admin interface if they changed during migration.
-
-#### Step 5: Configure SSL & Verify
-
-1. Access NPM at `http://NEW_SERVER_IP:81`
-2. Create proxy host and SSL certificate (see Quick Start section)
-3. Test login and verify all servers are listed
-4. Run manual backup to confirm functionality
-
-### Migration Troubleshooting
-
-**MongoDB connection fails after restore**
-- Verify `MONGO_PASSWORD` matches old server
-- Check connection string includes `?authSource=admin`
-- Test: `docker compose logs mongodb`
-
-**Game servers not visible**
-- Check Docker socket mount: `docker inspect gsm-backend | grep docker.sock`
-- Verify containers exist: `docker ps -a`
-- Check backend logs: `docker compose logs backend`
-
-**Sessions/logins not working**
-- Verify `SESSION_SECRET` and `JWT_SECRET` match old server
-- Clear browser cookies and try again
-- Check backend health: `curl http://localhost:5000/api/auth/status`
-
-**SSL certificate issues**
-- DNS propagation incomplete - wait and retry
-- Port 80/443 blocked - check firewall
-- Use NPM DNS challenge for Cloudflare
-- Previous certificates auto-revoked when new server issues cert
-
-**Backup jobs not running**
-- Check server models imported correctly
-- Verify `backupSchedule` field present: `docker compose exec mongodb mongosh ...`
-- Check backend logs for scheduler initialization
-- Manually trigger backup to test
-
-**Volume paths incorrect**
-- Update paths in `.env` file
-- Restart services: `docker compose down && docker compose up -d`
-- Verify mounts: `docker inspect gsm-backend`
-
-</details>
+See [docs/migration-guide.md](docs/migration-guide.md) for step-by-step instructions on moving GSM to a new server.
 
 ## Development
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for building from source, project structure, and contribution guidelines.
+See [docs/development.md](docs/development.md) for building from source, project structure, and contribution guidelines.
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](https://github.com/michaelsstuff/gsm/blob/master/LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 

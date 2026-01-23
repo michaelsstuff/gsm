@@ -11,7 +11,7 @@
 #   1. Set environment variables in your shell or create .env file
 #   2. Run: docker compose up -d
 #   3. Configure SSL in Nginx Proxy Manager at http://YOUR_IP:81
-#      - Default login: admin@example.com / changeme (CHANGE THIS!)
+#      - On first visit, register your admin account
 #      - Add proxy host: your-domain.com -> gsm-frontend:80
 #   4. Access: https://your-domain.com
 #
