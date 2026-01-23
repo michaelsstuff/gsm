@@ -56,14 +56,14 @@ BACKUP_PATH=./backups
 ### 3. Build and Start
 
 ```bash
-docker compose build
-docker compose up -d
+docker compose -f docker-compose.dev.yml build
+docker compose -f docker-compose.dev.yml up -d
 ```
 
 ### 4. View Logs
 
 ```bash
-docker compose logs -f
+docker compose -f docker-compose.dev.yml logs -f
 ```
 
 ---
@@ -155,8 +155,8 @@ gsm/
 2. If running locally: Changes auto-reload via webpack dev server
 3. If using Docker:
    ```bash
-   docker compose build frontend
-   docker compose up -d frontend
+  docker compose -f docker-compose.dev.yml build frontend
+  docker compose -f docker-compose.dev.yml up -d frontend
    ```
 
 ### Backend Changes
@@ -165,8 +165,8 @@ gsm/
 2. If running locally: Restart node server
 3. If using Docker:
    ```bash
-   docker compose build backend
-   docker compose up -d backend
+  docker compose -f docker-compose.dev.yml build backend
+  docker compose -f docker-compose.dev.yml up -d backend
    ```
 
 ### Testing Changes
@@ -174,15 +174,17 @@ gsm/
 Always test both locally and in containers before submitting PRs:
 
 ```bash
+```bash
 # Build fresh images
-docker compose build --no-cache
+docker compose -f docker-compose.dev.yml build --no-cache
 
 # Start with clean volumes
-docker compose down -v
-docker compose up -d
+docker compose -f docker-compose.dev.yml down -v
+docker compose -f docker-compose.dev.yml up -d
 
 # Check logs for errors
-docker compose logs -f
+docker compose -f docker-compose.dev.yml logs -f
+```
 ```
 
 ---
@@ -306,8 +308,9 @@ Format: `<type>: <short description>` - let the code changes speak for themselve
 ### Backend Issues
 
 ```bash
+```bash
 # Check backend logs
-docker compose logs backend
+docker compose -f docker-compose.dev.yml logs backend
 
 # Enter backend container
 docker exec -it gsm-backend sh
@@ -315,18 +318,21 @@ docker exec -it gsm-backend sh
 # Check MongoDB connection
 docker exec -it gsm-mongodb mongosh -u admin -p password
 ```
+```
 
 ### Frontend Issues
 
 ```bash
+```bash
 # Check frontend logs
-docker compose logs frontend
+docker compose -f docker-compose.dev.yml logs frontend
 
 # Check nginx config
 docker exec -it gsm-frontend cat /etc/nginx/conf.d/default.conf
 
 # Enter frontend container
 docker exec -it gsm-frontend sh
+```
 ```
 
 ### Docker Socket Issues
@@ -388,8 +394,9 @@ sudo chown -R $(id -u):$(id -g) ./backups
 ### Clean Slate Rebuild
 
 ```bash
+```bash
 # Stop everything
-docker compose down -v
+docker compose -f docker-compose.dev.yml down -v
 
 # Remove images
 docker rmi gsm-backend gsm-frontend
@@ -398,8 +405,9 @@ docker rmi gsm-backend gsm-frontend
 rm -rf server/node_modules client/node_modules
 
 # Rebuild from scratch
-docker compose build --no-cache
-docker compose up -d
+docker compose -f docker-compose.dev.yml build --no-cache
+docker compose -f docker-compose.dev.yml up -d
+```
 ```
 
 ---
