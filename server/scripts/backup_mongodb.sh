@@ -22,7 +22,7 @@ mongodump \
     --host mongodb \
     --port 27017 \
     --username admin \
-    --password "${MONGO_INITDB_ROOT_PASSWORD}" \
+    --password "${MONGO_PASSWORD}" \
     --authenticationDatabase admin \
     --db gameserver-manager \
     --out "${BACKUP_PATH}"

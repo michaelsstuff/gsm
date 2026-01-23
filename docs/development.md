@@ -47,7 +47,7 @@ cp .env.example .env
 Edit `.env` and set your values:
 
 ```env
-MONGO_INITDB_ROOT_PASSWORD=dev_password_12345
+MONGO_PASSWORD=dev_password_12345
 SESSION_SECRET=dev_session_secret_12345
 JWT_SECRET=dev_jwt_secret_12345
 BACKUP_PATH=./backups
@@ -75,8 +75,10 @@ For faster iteration during development, you can run services locally.
 **Environment Setup for Local Dev:**
 
 ```bash
+
+
 # Set required variables
-export MONGO_INITDB_ROOT_PASSWORD=dev_password_12345
+export MONGO_PASSWORD=dev_password_12345
 export SESSION_SECRET=dev_session_secret_12345
 export JWT_SECRET=dev_jwt_secret_12345
 

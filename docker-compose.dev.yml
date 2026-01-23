@@ -7,6 +7,7 @@ services:
       - mongodb-data:/data/db
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
+      # MongoDB requires the variable name MONGO_INITDB_ROOT_PASSWORD, but you only need to set MONGO_PASSWORD in your .env
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD must be set}
     networks:
       - gsm-network
