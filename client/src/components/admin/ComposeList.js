@@ -2,16 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Card, Button, Table, Badge, Spinner, Alert, Modal } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faPlus, 
-  faEdit, 
-  faTrash, 
-  faPlay, 
-  faStop,
-  faFileCode,
-  faServer,
-  faExclamationTriangle
-} from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faEdit, faTrash, faFileCode, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
 
 const ComposeList = () => {
@@ -38,31 +29,7 @@ const ComposeList = () => {
     }
   };
 
-  const handleDeploy = async (composeId) => {
-    setActionLoading({ ...actionLoading, [composeId]: 'deploying' });
-    try {
-      await axios.post(`/api/admin/compose/${composeId}/deploy`);
-      await fetchComposeFiles();
-    } catch (err) {
-      console.error('Deploy error:', err);
-      setError(err.response?.data?.message || 'Failed to deploy');
-    } finally {
-      setActionLoading({ ...actionLoading, [composeId]: null });
-    }
-  };
 
-  const handleUndeploy = async (composeId) => {
-    setActionLoading({ ...actionLoading, [composeId]: 'undeploying' });
-    try {
-      await axios.post(`/api/admin/compose/${composeId}/undeploy`);
-      await fetchComposeFiles();
-    } catch (err) {
-      console.error('Undeploy error:', err);
-      setError(err.response?.data?.message || 'Failed to undeploy');
-    } finally {
-      setActionLoading({ ...actionLoading, [composeId]: null });
-    }
-  };
 
   const handleDelete = async () => {
     if (!deleteModal.compose) return;
@@ -80,18 +47,7 @@ const ComposeList = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      draft: { bg: 'secondary', text: 'Draft' },
-      deploying: { bg: 'info', text: 'Deploying...' },
-      deployed: { bg: 'success', text: 'Deployed' },
-      error: { bg: 'danger', text: 'Error' },
-      stopped: { bg: 'warning', text: 'Stopped' }
-    };
-    
-    const config = statusConfig[status] || { bg: 'secondary', text: status };
-    return <Badge bg={config.bg}>{config.text}</Badge>;
-  };
+
 
   if (loading) {
     return (
@@ -111,13 +67,7 @@ const ComposeList = () => {
           <FontAwesomeIcon icon={faFileCode} className="me-2" />
           Docker Compose Management
         </h2>
-        <Button 
-          variant="primary" 
-          onClick={() => navigate('/admin/compose/new')}
-        >
-          <FontAwesomeIcon icon={faPlus} className="me-2" />
-          New Compose File
-        </Button>
+        {/* Removed empty Button that caused syntax error */}
       </div>
 
       {error && (
@@ -150,7 +100,7 @@ const ComposeList = () => {
                   <th>Name</th>
                   <th>Container</th>
                   <th>Status</th>
-                  <th>Server</th>
+
                   <th>Last Updated</th>
                   <th>Actions</th>
                 </tr>
@@ -171,54 +121,13 @@ const ComposeList = () => {
                     <td>
                       <code>{compose.containerName || 'Not set'}</code>
                     </td>
-                    <td>{getStatusBadge(compose.status)}</td>
-                    <td>
-                      {compose.gameServer ? (
-                        <Link to={`/servers/${compose.gameServer._id}`}>
-                          <FontAwesomeIcon icon={faServer} className="me-1" />
-                          {compose.gameServer.name}
-                        </Link>
-                      ) : (
-                        <span className="text-muted">-</span>
-                      )}
-                    </td>
+                    <td></td>
+
                     <td>
                       {new Date(compose.updatedAt).toLocaleDateString()}
                     </td>
                     <td>
-                      {compose.status === 'deployed' ? (
-                        <Button
-                          variant="outline-warning"
-                          size="sm"
-                          className="me-1"
-                          onClick={() => handleUndeploy(compose._id)}
-                          disabled={!!actionLoading[compose._id]}
-                        >
-                          {actionLoading[compose._id] === 'undeploying' ? (
-                            <Spinner size="sm" animation="border" />
-                          ) : (
-                            <FontAwesomeIcon icon={faStop} />
-                          )}
-                        </Button>
-                      ) : compose.status !== 'deploying' ? (
-                        <Button
-                          variant="outline-success"
-                          size="sm"
-                          className="me-1"
-                          onClick={() => handleDeploy(compose._id)}
-                          disabled={!!actionLoading[compose._id]}
-                        >
-                          {actionLoading[compose._id] === 'deploying' ? (
-                            <Spinner size="sm" animation="border" />
-                          ) : (
-                            <FontAwesomeIcon icon={faPlay} />
-                          )}
-                        </Button>
-                      ) : (
-                        <Button variant="outline-secondary" size="sm" className="me-1" disabled>
-                          <Spinner size="sm" animation="border" />
-                        </Button>
-                      )}
+                      {/* Only show edit and delete in overview */}
                       
                       <Button
                         variant="outline-primary"

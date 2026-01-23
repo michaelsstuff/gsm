@@ -10,21 +10,12 @@ const ComposeFileSchema = new mongoose.Schema({
     type: String,  // YAML content
     required: true
   },
-  gameServer: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'GameServer',
-    default: null  // null until deployed
-  },
-  status: {
-    type: String,
-    enum: ['draft', 'deploying', 'deployed', 'error', 'stopped'],
-    default: 'draft'
-  },
+
   containerName: {
     type: String,
     trim: true,
     unique: true,
-    sparse: true  // allows multiple nulls
+    sparse: true
   },
   deployedAt: {
     type: Date,
@@ -38,11 +29,9 @@ const ComposeFileSchema = new mongoose.Schema({
     type: Number,
     default: 1
   },
-  // Security validation results from last check
   validationWarnings: [{
     type: String
   }],
-  // Template this was created from (if any)
   templateName: {
     type: String,
     default: null

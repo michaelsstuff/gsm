@@ -20,9 +20,7 @@ const isAdmin = (req, res, next) => {
 router.get('/', isAdmin, async (req, res) => {
   try {
     const composeFiles = await ComposeFile.find()
-      .populate('gameServer', 'name status')
       .sort({ updatedAt: -1 });
-    
     res.json(composeFiles);
   } catch (error) {
     console.error('Error fetching compose files:', error);
@@ -35,13 +33,10 @@ router.get('/', isAdmin, async (req, res) => {
 // @access  Admin only
 router.get('/:id', isAdmin, async (req, res) => {
   try {
-    const composeFile = await ComposeFile.findById(req.params.id)
-      .populate('gameServer', 'name status containerName');
-    
+    const composeFile = await ComposeFile.findById(req.params.id);
     if (!composeFile) {
       return res.status(404).json({ message: 'Compose file not found' });
     }
-    
     res.json(composeFile);
   } catch (error) {
     console.error('Error fetching compose file:', error);
@@ -196,23 +191,8 @@ router.delete('/:id', isAdmin, async (req, res) => {
       return res.status(404).json({ message: 'Compose file not found' });
     }
     
-    // Can't delete deployed compose files
-    if (composeFile.status === 'deployed') {
-      return res.status(400).json({ 
-        message: 'Cannot delete deployed compose file. Undeploy first.' 
-      });
-    }
-    
-    // Delete associated GameServer if exists
-    if (composeFile.gameServer) {
-      await GameServer.findByIdAndDelete(composeFile.gameServer);
-    }
-    
-
-    
     // Delete from database
     await ComposeFile.findByIdAndDelete(req.params.id);
-    
     res.json({ message: 'Compose file deleted successfully' });
   } catch (error) {
     console.error('Error deleting compose file:', error);
@@ -282,22 +262,13 @@ router.post('/:id/deploy', isAdmin, async (req, res) => {
       return res.status(404).json({ message: 'Compose file not found' });
     }
     
-    if (composeFile.status === 'deployed') {
-      return res.status(400).json({ message: 'Compose file is already deployed' });
-    }
-    
-    if (composeFile.status === 'deploying') {
-      return res.status(400).json({ message: 'Deployment already in progress' });
-    }
+
     
     if (!composeFile.containerName) {
       return res.status(400).json({ message: 'Compose file has no container name defined' });
     }
     
-    // Mark as deploying
-    composeFile.status = 'deploying';
-    composeFile.lastError = null;
-    await composeFile.save();
+
     
     // Deploy
     const result = await composeService.deploy(
@@ -306,11 +277,10 @@ router.post('/:id/deploy', isAdmin, async (req, res) => {
       composeFile.containerName
     );
     
+
     if (!result.success) {
-      composeFile.status = 'error';
       composeFile.lastError = result.error;
       await composeFile.save();
-      
       return res.status(500).json({
         message: 'Deployment failed',
         error: result.error,
@@ -324,52 +294,49 @@ router.post('/:id/deploy', isAdmin, async (req, res) => {
     // Check if container is running
     const containerStatus = await dockerService.getContainerStatus(composeFile.containerName);
     
-    // Create or update GameServer entry
+    // Create or update GameServer entry (no link to ComposeFile)
     let gameServer = await GameServer.findOne({ containerName: composeFile.containerName });
 
-        // Lookup Steam info by composeFile name and map to GameServer fields
-        let steamInfo = null;
-        let steamFields = {};
-        try {
-          const { searchSteamGame, mapSteamInfoToGameServerFields } = require('../utils/steamLookup');
-          steamInfo = await searchSteamGame(composeFile.name);
-          steamFields = mapSteamInfoToGameServerFields(steamInfo, composeFile.name);
-        } catch (e) {
-          // Ignore steam lookup errors
-        }
+    // Lookup Steam info by composeFile name and map to GameServer fields
+    let steamInfo = null;
+    let steamFields = {};
+    try {
+      const { searchSteamGame, mapSteamInfoToGameServerFields } = require('../utils/steamLookup');
+      steamInfo = await searchSteamGame(composeFile.name);
+      steamFields = mapSteamInfoToGameServerFields(steamInfo, composeFile.name);
+    } catch (e) {
+      // Ignore steam lookup errors
+    }
 
-        if (!gameServer) {
-          gameServer = new GameServer({
-            name: steamFields.name || composeFile.name,
-            containerName: composeFile.containerName,
-            connectionString: 'Configure connection string',
-            status: containerStatus,
-            isManaged: true,
-            composeFile: composeFile._id,
-            steamAppId: steamFields.steamAppId || '',
-            logo: steamFields.logo || '',
-            websiteUrl: steamFields.websiteUrl || '',
-            description: steamFields.description || ''
-          });
-          await gameServer.save();
-        } else {
-          gameServer.status = containerStatus;
-          gameServer.isManaged = true;
-          gameServer.composeFile = composeFile._id;
-          if (steamFields.steamAppId) gameServer.steamAppId = steamFields.steamAppId;
-          if (steamFields.logo) gameServer.logo = steamFields.logo;
-          if (steamFields.websiteUrl) gameServer.websiteUrl = steamFields.websiteUrl;
-          if (steamFields.description) gameServer.description = steamFields.description;
-          if (steamFields.name) gameServer.name = steamFields.name;
-          await gameServer.save();
-        }
-    
-    // Update compose file
-    composeFile.status = 'deployed';
+    if (!gameServer) {
+      gameServer = new GameServer({
+        name: steamFields.name || composeFile.name,
+        containerName: composeFile.containerName,
+        connectionString: 'Configure connection string',
+        status: containerStatus,
+        isManaged: true,
+        steamAppId: steamFields.steamAppId || '',
+        logo: steamFields.logo || '',
+        websiteUrl: steamFields.websiteUrl || '',
+        description: steamFields.description || ''
+      });
+      await gameServer.save();
+    } else {
+      gameServer.status = containerStatus;
+      gameServer.isManaged = true;
+      if (steamFields.steamAppId) gameServer.steamAppId = steamFields.steamAppId;
+      if (steamFields.logo) gameServer.logo = steamFields.logo;
+      if (steamFields.websiteUrl) gameServer.websiteUrl = steamFields.websiteUrl;
+      if (steamFields.description) gameServer.description = steamFields.description;
+      if (steamFields.name) gameServer.name = steamFields.name;
+      await gameServer.save();
+    }
+
+
+    // Update compose file (no gameServer field, no status)
     composeFile.deployedAt = new Date();
-    composeFile.gameServer = gameServer._id;
     await composeFile.save();
-    
+
     res.json({
       message: 'Deployment successful',
       composeFile,
@@ -407,9 +374,7 @@ router.post('/:id/undeploy', isAdmin, async (req, res) => {
       return res.status(404).json({ message: 'Compose file not found' });
     }
     
-    if (composeFile.status !== 'deployed' && composeFile.status !== 'error') {
-      return res.status(400).json({ message: 'Compose file is not deployed' });
-    }
+
     
     // Undeploy
     const result = await composeService.undeploy(

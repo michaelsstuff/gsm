@@ -2,17 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Card, Form, Button, Alert, Spinner, Row, Col, Badge, Modal } from 'react-bootstrap';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faArrowLeft, 
-  faSave, 
-  faPlay, 
-  faStop,
-  faRedo,
-  faCheck,
-  faExclamationTriangle,
-  faTerminal,
-  faFileCode
-} from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faSave, faPlay, faCheck, faExclamationTriangle, faTerminal, faFileCode } from '@fortawesome/free-solid-svg-icons';
 import AceEditor from 'react-ace';
 import axios from 'axios';
 
@@ -218,18 +208,7 @@ const ComposeEditor = () => {
     fetchLogs();
   };
 
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      draft: { bg: 'secondary', text: 'Draft' },
-      deploying: { bg: 'info', text: 'Deploying...' },
-      deployed: { bg: 'success', text: 'Deployed' },
-      error: { bg: 'danger', text: 'Error' },
-      stopped: { bg: 'warning', text: 'Stopped' }
-    };
-    
-    const config = statusConfig[status] || { bg: 'secondary', text: status };
-    return <Badge bg={config.bg}>{config.text}</Badge>;
-  };
+
 
   if (loading) {
     return (
@@ -255,7 +234,7 @@ const ComposeEditor = () => {
             <FontAwesomeIcon icon={faFileCode} className="me-2" />
             {isEditing ? `Edit: ${composeFile?.name}` : 'Create New Compose File'}
           </h5>
-          {composeFile && getStatusBadge(composeFile.status)}
+
         </Card.Header>
         
         <Card.Body>
@@ -402,61 +381,40 @@ const ComposeEditor = () => {
                 )}
               </Button>
 
-              {isEditing && composeFile?.status !== 'deployed' && composeFile?.status !== 'deploying' && (
-                <Button
-                  variant="success"
-                  onClick={handleDeploy}
-                  disabled={deploying}
-                >
-                  {deploying ? (
-                    <>
-                      <Spinner size="sm" animation="border" className="me-2" />
-                      Deploying...
-                    </>
-                  ) : (
-                    <>
-                      <FontAwesomeIcon icon={faPlay} className="me-2" />
-                      Deploy
-                    </>
-                  )}
-                </Button>
-              )}
 
-              {isEditing && composeFile?.status === 'deployed' && (
+              {isEditing && (
                 <>
                   <Button
-                    variant="warning"
-                    onClick={handleRedeploy}
+                    variant="success"
+                    onClick={handleDeploy}
                     disabled={deploying}
                   >
                     {deploying ? (
                       <>
                         <Spinner size="sm" animation="border" className="me-2" />
-                        Redeploying...
+                        Deploying...
                       </>
                     ) : (
                       <>
-                        <FontAwesomeIcon icon={faRedo} className="me-2" />
-                        Redeploy
+                        <FontAwesomeIcon icon={faPlay} className="me-2" />
+                        Deploy
                       </>
                     )}
                   </Button>
-                  
                   <Button
                     variant="danger"
-                    onClick={handleUndeploy}
-                    disabled={deploying}
+                    onClick={async () => {
+                      if (window.confirm('Are you sure you want to delete this compose file?')) {
+                        try {
+                          await axios.delete(`/api/admin/compose/${id}`);
+                          navigate('/admin/compose');
+                        } catch (err) {
+                          setError(err.response?.data?.message || 'Failed to delete compose file');
+                        }
+                      }
+                    }}
                   >
-                    <FontAwesomeIcon icon={faStop} className="me-2" />
-                    Undeploy
-                  </Button>
-                  
-                  <Button
-                    variant="outline-secondary"
-                    onClick={handleShowLogs}
-                  >
-                    <FontAwesomeIcon icon={faTerminal} className="me-2" />
-                    View Logs
+                    Delete
                   </Button>
                 </>
               )}
@@ -493,16 +451,7 @@ const ComposeEditor = () => {
                     </Alert>
                   )}
                   
-                  {composeFile.gameServer && (
-                    <div className="mt-3">
-                      <Link 
-                        to={`/servers/${composeFile.gameServer._id || composeFile.gameServer}`}
-                        className="btn btn-outline-primary"
-                      >
-                        View Game Server
-                      </Link>
-                    </div>
-                  )}
+
                 </Card.Body>
               </Card>
             )}
