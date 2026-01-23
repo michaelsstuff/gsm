@@ -44,7 +44,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock                # REQUIRED: Docker API access
       - ${BACKUP_PATH:-./backups}:/app/backups                   # REQUIRED: Backup storage path
       - ${GAME_VOLUMES_PATH:-/var/opt/container-volumes}:/app/container-volumes:ro # OPTIONAL: Game server data for backups
-      - ${COMPOSE_FILES_PATH:-./compose-files}:/app/compose-files # OPTIONAL: Compose files storage
+
     environment:
       NODE_ENV: production                                       # REQUIRED: Set to 'production'
       PORT: 5000                                                 # REQUIRED: Backend port

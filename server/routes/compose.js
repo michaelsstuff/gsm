@@ -208,8 +208,7 @@ router.delete('/:id', isAdmin, async (req, res) => {
       await GameServer.findByIdAndDelete(composeFile.gameServer);
     }
     
-    // Delete compose file from disk
-    await composeService.deleteComposeFile(composeFile._id.toString());
+
     
     // Delete from database
     await ComposeFile.findByIdAndDelete(req.params.id);
@@ -611,15 +610,12 @@ router.post('/:id/pull', isAdmin, async (req, res) => {
       return res.status(400).json({ message: 'Compose file has no container name' });
     }
     
-    // Ensure compose file is written to disk
-    await composeService.writeComposeFile(
-      composeFile._id.toString(),
-      composeFile.content
-    );
+
     
     const result = await composeService.pullImages(
       composeFile._id.toString(),
-      composeFile.containerName
+      composeFile.containerName,
+      composeFile.content
     );
     
     if (!result.success) {

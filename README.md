@@ -41,6 +41,9 @@ Web application for managing game servers running as Docker containers. Features
 - Manage game server configurations
 - Replace tools like LinuxGSM, AMP, or Pterodactyl
 
+
+Compose files for managed deployments are stored in MongoDB and managed via the GSM web interface. No local compose-files directory or COMPOSE_FILES_PATH is required.
+
 Your game servers must already be running as Docker containers before adding them to GSM.
 
 ## Features
