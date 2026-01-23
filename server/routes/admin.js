@@ -4,6 +4,7 @@ const GameServer = require('../models/GameServer');
 const User = require('../models/User');
 const dockerService = require('../utils/dockerService');
 const backupScheduler = require('../utils/backupScheduler');
+const { searchSteamGame } = require('../utils/steamLookup');
 
 // Middleware to check if user is authenticated and an admin
 const isAdmin = (req, res, next) => {
@@ -12,6 +13,22 @@ const isAdmin = (req, res, next) => {
   }
   return res.status(403).json({ message: 'Forbidden: Admin access required' });
 };
+
+// @route   GET /api/steam-lookup
+// @desc    Lookup Steam game info by name
+// @access  Admin only
+router.get('/steam-lookup', isAdmin, async (req, res) => {
+  const { name } = req.query;
+  if (!name) return res.status(400).json({ message: 'Missing game name' });
+  try {
+    const result = await searchSteamGame(name);
+    if (!result) return res.json({});
+    res.json(result);
+  } catch (err) {
+    console.error('Steam lookup error:', err);
+    res.status(500).json({ message: 'Steam lookup failed' });
+  }
+});
 
 // @route   GET /api/admin/users
 // @desc    Get all users (admin only)
