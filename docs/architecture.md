@@ -12,13 +12,12 @@ flowchart TB
     Backend["⚙️ Backend Container<br/>(gsm-backend)<br/>Node.js + Express<br/>Internal port: 5000"]
     MongoDB["🗄️ MongoDB<br/>(gsm-mongodb)<br/>Internal port: 27017"]
     Docker["🐳 Docker Socket<br/>/var/run/docker.sock"]
-    GameServers["🎮 External Game<br/>Server Containers"]
+    GameServers["🎮 Game Server<br/>Containers"]
     
-    Client <-->|"HTTPS (443)<br/>your-domain.com<br/>Static files & API calls"| NPM
-    NPM <-->|"HTTP (80)<br/>SSL Termination<br/>Proxies all requests"| Frontend
+    Client -->|"HTTPS (443)<br/>your-domain.com<br/>Static files & API calls"| NPM
+    NPM -->|"HTTP (80)<br/>SSL Termination<br/>Proxies all requests"| Frontend
     Frontend -->|"Proxies /api/*<br/>to backend:5000"| Backend
-    Backend -->|"Response"| Frontend
-    Backend <-->|"Auth & Data"| MongoDB
+    Backend -->|"Auth & Data"| MongoDB
     Backend -->|"Container Control"| Docker
     Docker -.->|"Manage"| GameServers
     
@@ -59,4 +58,4 @@ flowchart TB
 1. **Frontend as Reverse Proxy**: Client never connects directly to backend - all API calls proxied through frontend nginx
 2. **No Port Exposure**: Backend has no host port mapping, only accessible via Docker network
 3. **SSL Termination at Edge**: NPM handles all SSL/TLS, internal services use HTTP
-4. **External Container Management**: Game servers exist outside compose stack, managed via Docker socket
+4. **Separate Game Server Containers**: Game servers are not part of the GSM compose stack - they run independently and are managed via Docker socket
