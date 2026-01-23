@@ -1,0 +1,23 @@
+# Terraria Server
+# Uses ryshe/terraria image
+# Documentation: https://github.com/ryansheehan/terraria
+
+services:
+  terraria:
+    image: ryshe/terraria:latest
+    container_name: terraria
+    ports:
+      - "7777:7777"
+    environment:
+      # World settings
+      WORLD_FILENAME: "world.wld"
+      WORLD_SIZE: "2"  # 1=small, 2=medium, 3=large
+      WORLD_DIFFICULTY: "0"  # 0=classic, 1=expert, 2=master, 3=journey
+      MAX_PLAYERS: "8"
+      SERVER_PASSWORD: ""  # Leave empty for no password
+      MOTD: "Welcome to Terraria!"
+    volumes:
+      - /var/opt/container-volumes/terraria:/root/.local/share/Terraria/Worlds
+    restart: unless-stopped
+    tty: true
+    stdin_open: true

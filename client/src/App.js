@@ -11,6 +11,8 @@ import Profile from './components/auth/Profile';
 import ServerForm from './components/admin/ServerForm';
 import UserManagement from './components/admin/UserManagement';
 import FileBrowser from './components/admin/FileBrowser';
+import ComposeList from './components/admin/ComposeList';
+import ComposeEditor from './components/admin/ComposeEditor';
 import { useAuth } from './context/AuthContext';
 import './App.css';
 
@@ -88,6 +90,30 @@ const App = () => {
               element={
                 <AdminRoute>
                   <FileBrowser />
+                </AdminRoute>
+              } 
+            />
+            <Route 
+              path="/admin/compose" 
+              element={
+                <AdminRoute>
+                  <ComposeList />
+                </AdminRoute>
+              } 
+            />
+            <Route 
+              path="/admin/compose/new" 
+              element={
+                <AdminRoute>
+                  <ComposeEditor />
+                </AdminRoute>
+              } 
+            />
+            <Route 
+              path="/admin/compose/:id" 
+              element={
+                <AdminRoute>
+                  <ComposeEditor />
                 </AdminRoute>
               } 
             />

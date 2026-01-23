@@ -75,6 +75,8 @@ services:
       - ${BACKUP_PATH:-./backups}:/app/backups
       # REQUIRED: Game server volumes (adjust path to your setup)
       - ${GAME_VOLUMES_PATH:-/var/opt/container-volumes}:/app/container-volumes:ro
+      # Compose files storage for managed containers
+      - ${COMPOSE_FILES_PATH:-./compose-files}:/app/compose-files
     environment:
       NODE_ENV: production
       PORT: 5000
@@ -103,7 +105,10 @@ services:
         condition: service_healthy
     networks:
       - gsm-network
-    # No ports exposed - accessed through Nginx Proxy Manager only
+    # Port 3000 for local development testing (optional - remove in production)
+    ports:
+      - "3000:80"
+    # In production: No ports exposed - accessed through Nginx Proxy Manager only
     # NPM will proxy requests to gsm-frontend:80
 
 networks:

@@ -1,0 +1,28 @@
+# Valheim Dedicated Server
+# Uses lloesche/valheim-server image
+# Documentation: https://github.com/lloesche/valheim-server-docker
+
+services:
+  valheim:
+    image: lloesche/valheim-server
+    container_name: valheim
+    ports:
+      - "2456-2458:2456-2458/udp"
+    environment:
+      SERVER_NAME: "Valheim Server"
+      WORLD_NAME: "Dedicated"
+      SERVER_PASS: "changeme"  # CHANGE THIS - minimum 5 characters
+      SERVER_PUBLIC: "false"
+      UPDATE_CRON: "0 5 * * *"
+      RESTART_CRON: "0 6 * * *"
+      TZ: "UTC"
+      # Backups
+      BACKUPS: "true"
+      BACKUPS_CRON: "0 * * * *"
+      BACKUPS_MAX_AGE: "3"
+    volumes:
+      - /var/opt/container-volumes/valheim/config:/config
+      - /var/opt/container-volumes/valheim/data:/opt/valheim
+    restart: unless-stopped
+    cap_add:
+      - SYS_NICE

@@ -24,6 +24,7 @@ const Navigation = () => {
             <Nav.Link as={Link} to="/servers">Servers</Nav.Link>
             {isAuthenticated && user?.role === 'admin' && (
               <>
+                <Nav.Link as={Link} to="/admin/compose">Compose</Nav.Link>
                 <Nav.Link as={Link} to="/admin/users">User Management</Nav.Link>
                 <Nav.Link as={Link} to="/admin/servers/new">Add Server</Nav.Link>
               </>

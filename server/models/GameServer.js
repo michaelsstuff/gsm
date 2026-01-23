@@ -115,6 +115,16 @@ const GameServerSchema = new mongoose.Schema({
       default: true
     }
   },
+  // Compose management fields
+  isManaged: {
+    type: Boolean,  // true = created by GSM via compose, false = external container
+    default: false
+  },
+  composeFile: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ComposeFile',
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now,

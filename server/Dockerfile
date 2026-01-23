@@ -1,8 +1,9 @@
 FROM node:25-alpine
 
-# Install Docker CLI and shell utilities to interact with the host Docker socket
+# Install Docker CLI, Docker Compose, and shell utilities to interact with the host Docker socket
 RUN apk add --no-cache \
     docker \
+    docker-cli-compose \
     bash \
     tar \
     gzip \

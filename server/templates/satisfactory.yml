@@ -1,0 +1,33 @@
+# Satisfactory Dedicated Server
+# Uses wolveix/satisfactory-server image
+# Documentation: https://github.com/wolveix/satisfactory-server
+
+services:
+  satisfactory:
+    image: wolveix/satisfactory-server:latest
+    container_name: satisfactory
+    ports:
+      - "7777:7777/udp"
+      - "7777:7777/tcp"
+    environment:
+      AUTOPAUSE: "true"
+      AUTOSAVEINTERVAL: "300"
+      AUTOSAVENUM: "5"
+      AUTOSAVEONDISCONNECT: "true"
+      CRASHREPORT: "true"
+      DEBUG: "false"
+      DISABLESEASONALEVENTS: "false"
+      MAXPLAYERS: "4"
+      PGID: "1000"
+      PUID: "1000"
+      SKIPUPDATE: "false"
+      STEAMBETA: "false"
+    volumes:
+      - /var/opt/container-volumes/satisfactory:/config
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G

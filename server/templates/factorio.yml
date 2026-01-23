@@ -1,0 +1,22 @@
+# Factorio Dedicated Server
+# Uses factoriotools/factorio image
+# Documentation: https://github.com/factoriotools/factorio-docker
+
+services:
+  factorio:
+    image: factoriotools/factorio:stable
+    container_name: factorio
+    ports:
+      - "34197:34197/udp"
+      - "27015:27015/tcp"  # RCON
+    environment:
+      SAVE_NAME: "my-save"
+      LOAD_LATEST_SAVE: "true"
+      GENERATE_NEW_SAVE: "true"
+      # Server settings override
+      # TOKEN: ""  # factorio.com token for server browser
+      # USERNAME: ""  # factorio.com username
+      UPDATE_MODS_ON_START: "true"
+    volumes:
+      - /var/opt/container-volumes/factorio:/factorio
+    restart: unless-stopped
