@@ -74,8 +74,10 @@
 ### Required Mounts
 
 - `/var/run/docker.sock` - Docker API access
-- `/mnt/backup/container/` - Backup storage location
+- `./backups` - Backup storage location
 - `/var/opt/container-volumes/` - Game server data for backups (read-only)
+
+**Note:** Subdirectory names under `container-volumes` must match container names for backups.
 
 ### Optional Integrations
 

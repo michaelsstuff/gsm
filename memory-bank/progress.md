@@ -74,11 +74,13 @@
 
 - [x] Deployment guide (consolidated in README)
 - [x] Quick start with NPM SSL setup
-- [x] Troubleshooting common issues
+- [x] Troubleshooting common issues (docs/troubleshooting.md)
 - [x] Volume mount configuration
+- [x] Architecture documentation (docs/architecture.md)
+- [x] Migration guide (docs/migration-guide.md)
+- [x] Development setup (docs/development.md)
 - [ ] API documentation
 - [ ] Advanced NPM configurations
-- [ ] Development setup (in docs/development.md)
 
 ## Current Status
 
@@ -93,8 +95,7 @@
 - Docker socket permissions require careful host configuration
 - Large file uploads may impact performance
 - Real-time status polling can be resource intensive with many servers
-- NPM default credentials must be changed immediately (security risk)
-- First-time NPM setup requires manual proxy host configuration
+- First-time NPM setup requires manual account registration and proxy host configuration
 
 ## Success Metrics Achieved
 

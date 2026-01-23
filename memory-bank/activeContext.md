@@ -7,26 +7,28 @@
 
 ## Recent Changes
 
+- **Documentation Refactoring:** Split README into focused docs under `docs/`:
+  - `docs/architecture.md` - Traffic flow diagrams and security model
+  - `docs/troubleshooting.md` - Common issues and solutions
+  - `docs/migration-guide.md` - Step-by-step server migration
+  - `docs/development.md` - Building from source (moved from DEVELOPMENT.md)
+- **README Improvements:** Added Table of Contents, TL;DR quick start, "What This Is" section
+- **Volume Mount Cleanup:** Removed unused `container-compose` volume mount
+- **License Fix:** Corrected license text to Apache 2.0 (was incorrectly GPL v3)
+- **NPM Fix:** Removed incorrect default login references (NPM requires registration)
 - **Deployment Simplification:** Removed all bash scripts (setup.sh, docker-deploy.sh, backup scripts)
 - **Nginx Proxy Manager:** Added NPM for simple SSL management via web UI
 - **Docker Hub Images:** Published pre-built images to `michaelsstuff/gsm-backend` and `gsm-frontend`
 - **GitHub Actions CI/CD:** Automated multi-arch builds triggered by version tags
-- **Documentation Consolidation:** Merged all deployment docs into single README (265 lines)
-- **Standalone Compose:** docker-compose.yml with built-in environment validation
 
 ## Next Steps
 
-1. **Immediate:**
-   - Monitor GitHub Actions workflow for image builds
-   - Test deployment from Docker Hub images on fresh system
-   - Validate NPM SSL setup workflow
-
-2. **Short Term:**
+1. **Short Term:**
    - Gather user feedback on simplified deployment
-   - Add usage examples and common configurations to docs
    - Consider additional NPM configurations (websockets, rate limiting)
+   - Add API documentation
 
-3. **Medium Term:**
+2. **Medium Term:**
    - Add health checks and monitoring endpoints
    - Implement additional security features (2FA, login attempt limiting)
    - Create Docker Hub automated builds for PR testing

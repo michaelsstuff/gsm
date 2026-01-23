@@ -10,10 +10,14 @@
 
 ## 🐳 Docker Deployment Rules
 
-- **NEVER use `docker-compose` commands directly** - always use `./docker-deploy.sh`
-- The deployment script handles environment setup, volume mounting, and container lifecycle
-- Bypassing the script breaks environment variable templating and can cause deployment failures
-- For debugging, use `./docker-deploy.sh logs` instead of direct docker commands
+- Use standard `docker compose` commands for deployment
+- See `README.md` for quick start and `docs/` folder for detailed guides:
+  - `docs/architecture.md` - System architecture and traffic flow
+  - `docs/troubleshooting.md` - Common issues and solutions
+  - `docs/migration-guide.md` - Moving GSM to a new server
+  - `docs/development.md` - Building from source and contributing
+- Environment variables via `.env` file or shell exports
+- For debugging, use `docker compose logs -f`
 
 ## 📊 Container Management Patterns
 
@@ -50,7 +54,9 @@
 
 - Backup scheduler uses Mongoose post-hooks to auto-cleanup cron jobs
 - All backup operations should notify via Discord webhooks
-- External volume mounts required: `/mnt/backup/container/` and `/var/opt/container-volumes/`
+- Game server data mount required: `/var/opt/container-volumes/` (read-only)
+- Backup storage mount: `./backups:/app/backups`
+- Subdirectory names must match container names for backups to work
 - File uploads limited to 100MB via express-fileupload middleware
 
 ## 🌐 SSL and Production

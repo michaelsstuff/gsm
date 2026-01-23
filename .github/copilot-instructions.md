@@ -64,9 +64,11 @@ docker compose pull       # Update images
 Backend container needs these host paths:
 ```yaml
 /var/run/docker.sock:/var/run/docker.sock      # Docker API access
-/mnt/backup/container/:/app/backups           # Backup storage
+./backups:/app/backups                          # Backup storage
 /var/opt/container-volumes:/app/container-volumes:ro   # Game data for backups (read-only)
 ```
+
+Subdirectory names under `container-volumes` must match Docker container names for backups to work.
 
 ## Code Patterns & Conventions
 
@@ -236,3 +238,11 @@ await discordWebhook.sendBackupNotification({
 - Called after MongoDB connection established (see server.js)
 - If server model saved, job automatically updated via Mongoose hook
 - MongoDB connection requires auth database specification: `?authSource=admin`
+
+## Documentation References
+
+Detailed documentation is split into focused files under `docs/`:
+- `docs/architecture.md` - Traffic flow diagrams and security model
+- `docs/troubleshooting.md` - Common issues and solutions
+- `docs/migration-guide.md` - Step-by-step server migration
+- `docs/development.md` - Building from source and contributing
