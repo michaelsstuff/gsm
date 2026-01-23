@@ -150,7 +150,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${BACKUP_PATH:-./backups}:/app/backups
       - ${GAME_VOLUMES_PATH:-/var/opt/container-volumes}:/app/container-volumes:ro
-      - ${COMPOSE_PATH:-/var/opt/container-compose}:/app/container-compose:ro
     environment:
       NODE_ENV: production
       PORT: 5000
@@ -256,18 +255,48 @@ docker exec gsm-mongodb mongodump \
 
 ## Volume Mounts
 
-Backend requires these mounts to manage external game servers:
+Backend requires these mounts:
 
-- `/var/run/docker.sock` - Docker API access (required)
-- `/var/opt/container-volumes` - Game server data (read-only)
-- `/var/opt/container-compose` - Compose files (read-only)
-- `./backups` - Backup storage
+| Mount | Purpose |
+|-------|---------|
+| `/var/run/docker.sock` | Docker API access to control containers |
+| `/var/opt/container-volumes` | Parent directory containing game server data (read-only) |
+| `./backups` | Where backup archives are stored |
 
-Adjust paths in `.env` if different:
+### Game Server Data Structure
+
+For backups to work, your game server containers must store their persistent data in subdirectories named after the **container name** you configure in GSM.
+
+**Example:** When you add a server in GSM with container name `minecraft-server`, the backup system looks for data at:
+```
+/var/opt/container-volumes/minecraft-server/
+```
+
+You control this by configuring your game server's Docker volume mounts:
+
+```yaml
+# Your game server's docker-compose.yml
+services:
+  minecraft-server:                    # ← This is the container name
+    image: itzg/minecraft-server
+    volumes:
+      - /var/opt/container-volumes/minecraft-server:/data  # ← Must match!
+```
+
+Expected structure:
+```
+/var/opt/container-volumes/
+├── minecraft-server/      # Matches container name "minecraft-server"
+├── valheim-server/        # Matches container name "valheim-server"
+└── terraria-server/       # Matches container name "terraria-server"
+```
+
+When you trigger a backup in GSM, it archives the directory matching the container name you specified.
+
+Adjust paths in `.env` if your setup differs:
 
 ```env
 GAME_VOLUMES_PATH=/your/path
-COMPOSE_PATH=/your/path
 BACKUP_PATH=/your/path
 ```
 

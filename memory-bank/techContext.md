@@ -75,8 +75,7 @@
 
 - `/var/run/docker.sock` - Docker API access
 - `/mnt/backup/container/` - Backup storage location
-- `/var/opt/container-volumes/` - Game server data access (read-only)
-- `/var/opt/container-compose/` - Docker compose files access (read-only)
+- `/var/opt/container-volumes/` - Game server data for backups (read-only)
 
 ### Optional Integrations
 

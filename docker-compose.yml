@@ -75,8 +75,6 @@ services:
       - ${BACKUP_PATH:-./backups}:/app/backups
       # REQUIRED: Game server volumes (adjust path to your setup)
       - ${GAME_VOLUMES_PATH:-/var/opt/container-volumes}:/app/container-volumes:ro
-      # REQUIRED: Compose files for game servers (adjust path to your setup)
-      - ${COMPOSE_PATH:-/var/opt/container-compose}:/app/container-compose:ro
     environment:
       NODE_ENV: production
       PORT: 5000
