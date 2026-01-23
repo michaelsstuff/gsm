@@ -130,7 +130,7 @@ const ServerForm = () => {
                     setLookupError(null);
                     try {
                       const res = await axios.get(`/api/admin/steam-lookup?name=${encodeURIComponent(formData.name)}`);
-                      const { appId, name, storeUrl, logoUrl } = res.data || {};
+                      const { appId, name, storeUrl, logoUrl, description } = res.data || {};
                       if (appId) {
                         // Detect fallback: if logoUrl contains 'steamstatic' or matches tiny_image/header_image pattern
                         let steamGridDbFailed = false;
@@ -142,7 +142,8 @@ const ServerForm = () => {
                           steamAppId: appId,
                           name: name || f.name,
                           websiteUrl: storeUrl || f.websiteUrl,
-                          logo: logoUrl || f.logo
+                          logo: logoUrl || f.logo,
+                          description: description || f.description
                         }));
                         if (steamGridDbFailed) {
                           setLookupError('Warning: SteamGridDB icon lookup failed. Using Steam logo instead.');

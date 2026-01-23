@@ -20,28 +20,32 @@ async function searchSteamGame(gameName) {
   // Step 3: Get details from appdetails
   const appId = match.id;
   let logoUrl = match.tiny_image;
+  let description = '';
   // Try SteamGridDB for square icon (pass gameName for fallback)
   const gridIcon = await getSteamGridDbIcon(appId, gameName);
+  let appDetails = null;
+  try {
+    const storeRes = await axios.get(`https://store.steampowered.com/api/appdetails?appids=${appId}`);
+    appDetails = storeRes.data?.[appId]?.data;
+    if (appDetails) {
+      logoUrl = appDetails.capsule_image || appDetails.header_image || logoUrl;
+      description = appDetails.short_description || '';
+    }
+  } catch (e) {
+    // Ignore appdetails errors, fallback to tiny_image
+  }
   if (gridIcon && gridIcon.iconUrl) {
     console.log(`[SteamLookup] Found SteamGridDB icon for appId ${appId}: ${gridIcon.iconUrl}`);
     logoUrl = gridIcon.iconUrl;
   } else {
     console.log(`[SteamLookup] No SteamGridDB icon for appId ${appId}, using Steam image.`);
-    try {
-      const storeRes = await axios.get(`https://store.steampowered.com/api/appdetails?appids=${appId}`);
-      const data = storeRes.data?.[appId]?.data;
-      if (data) {
-        logoUrl = data.capsule_image || data.header_image || logoUrl;
-      }
-    } catch (e) {
-      // Ignore appdetails errors, fallback to tiny_image
-    }
   }
   return {
     appId,
     name: match.name,
     storeUrl: `https://store.steampowered.com/app/${appId}`,
-    logoUrl
+    logoUrl,
+    description
   };
 }
 
