@@ -327,23 +327,43 @@ router.post('/:id/deploy', isAdmin, async (req, res) => {
     
     // Create or update GameServer entry
     let gameServer = await GameServer.findOne({ containerName: composeFile.containerName });
-    
-    if (!gameServer) {
-      gameServer = new GameServer({
-        name: composeFile.name,
-        containerName: composeFile.containerName,
-        connectionString: 'Configure connection string',
-        status: containerStatus,
-        isManaged: true,
-        composeFile: composeFile._id
-      });
-      await gameServer.save();
-    } else {
-      gameServer.status = containerStatus;
-      gameServer.isManaged = true;
-      gameServer.composeFile = composeFile._id;
-      await gameServer.save();
-    }
+
+        // Lookup Steam info by composeFile name and map to GameServer fields
+        let steamInfo = null;
+        let steamFields = {};
+        try {
+          const { searchSteamGame, mapSteamInfoToGameServerFields } = require('../utils/steamLookup');
+          steamInfo = await searchSteamGame(composeFile.name);
+          steamFields = mapSteamInfoToGameServerFields(steamInfo, composeFile.name);
+        } catch (e) {
+          // Ignore steam lookup errors
+        }
+
+        if (!gameServer) {
+          gameServer = new GameServer({
+            name: steamFields.name || composeFile.name,
+            containerName: composeFile.containerName,
+            connectionString: 'Configure connection string',
+            status: containerStatus,
+            isManaged: true,
+            composeFile: composeFile._id,
+            steamAppId: steamFields.steamAppId || '',
+            logo: steamFields.logo || '',
+            websiteUrl: steamFields.websiteUrl || '',
+            description: steamFields.description || ''
+          });
+          await gameServer.save();
+        } else {
+          gameServer.status = containerStatus;
+          gameServer.isManaged = true;
+          gameServer.composeFile = composeFile._id;
+          if (steamFields.steamAppId) gameServer.steamAppId = steamFields.steamAppId;
+          if (steamFields.logo) gameServer.logo = steamFields.logo;
+          if (steamFields.websiteUrl) gameServer.websiteUrl = steamFields.websiteUrl;
+          if (steamFields.description) gameServer.description = steamFields.description;
+          if (steamFields.name) gameServer.name = steamFields.name;
+          await gameServer.save();
+        }
     
     // Update compose file
     composeFile.status = 'deployed';

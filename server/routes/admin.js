@@ -23,7 +23,15 @@ router.get('/steam-lookup', isAdmin, async (req, res) => {
   try {
     const result = await searchSteamGame(name);
     if (!result) return res.json({});
-    res.json(result);
+    const { mapSteamInfoToGameServerFields } = require('../utils/steamLookup');
+    const mapped = mapSteamInfoToGameServerFields(result, name);
+    res.json({
+      appId: mapped.steamAppId,
+      name: mapped.name,
+      storeUrl: mapped.websiteUrl,
+      logoUrl: mapped.logo,
+      description: mapped.description
+    });
   } catch (err) {
     console.error('Steam lookup error:', err);
     res.status(500).json({ message: 'Steam lookup failed' });

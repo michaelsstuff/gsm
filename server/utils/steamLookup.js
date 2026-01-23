@@ -49,4 +49,21 @@ async function searchSteamGame(gameName) {
   };
 }
 
-module.exports = { searchSteamGame };
+function mapSteamInfoToGameServerFields(steamInfo, fallbackName = '') {
+  if (!steamInfo || !steamInfo.appId) return {};
+  let steamGridDbFailed = false;
+  const logo = steamInfo.logoUrl || '';
+  if (logo && (logo.includes('steamstatic.com') || logo.includes('store.steampowered.com'))) {
+    steamGridDbFailed = true;
+  }
+  return {
+    steamAppId: steamInfo.appId,
+    name: steamInfo.name || fallbackName,
+    websiteUrl: steamInfo.storeUrl || '',
+    logo,
+    description: steamInfo.description || '',
+    steamGridDbFailed
+  };
+}
+
+module.exports = { searchSteamGame, mapSteamInfoToGameServerFields };
