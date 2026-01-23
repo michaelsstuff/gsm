@@ -1,3 +1,22 @@
+## Local Development Workflow
+
+For local development, use the dedicated `docker-compose.dev.yml` file. This file:
+
+- Builds backend and frontend from source
+- Exposes backend (5000) and frontend (3000) ports for direct access
+- Keeps production `docker-compose.yml` clean and secure
+
+### Usage
+
+Start development stack:
+
+```
+docker compose -f docker-compose.dev.yml up -d
+```
+
+Access the frontend at `http://localhost:3000` and backend at `http://localhost:5000`.
+
+For production, always use the main `docker-compose.yml`.
 # Development Guide
 
 This guide is for developers who want to build Game Server Manager from source, contribute to the project, or customize it for their needs.
