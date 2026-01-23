@@ -51,3 +51,4 @@ UPGRADE-TASKS.md
 # Testing
 coverage/
 .nyc_output/
+FEATURE-PLAN-*.md
