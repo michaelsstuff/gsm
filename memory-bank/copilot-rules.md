@@ -80,10 +80,13 @@
 - Use semantic search when unsure about existing implementations
 - Follow the project's pattern of external container management, not creation
 
+
 ## � Commit Message Standards
 
 - Follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format
 - Keep commit messages short and concise - avoid verbose descriptions
+- Do not add fluff, filler, or vague explanations (e.g., "for schema compliance and clarity").
+- Only include explanations if they describe a real technical reason or fix (e.g., "fix: broken job_id in merge.yml").
 - Format: `<type>: <short description>`
 - Common types: `feat`, `fix`, `docs`, `chore`, `ci`, `test`, `refactor`
 - Example: `feat: Add unit tests for password security`
