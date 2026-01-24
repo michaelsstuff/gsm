@@ -1,0 +1,8 @@
+name: Test on Pull Request
+
+on:
+  pull_request:
+
+jobs:
+  test:
+    uses: ./.github/workflows/merge.yml

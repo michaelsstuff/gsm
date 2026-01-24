@@ -1,4 +1,4 @@
-FROM node:25-alpine
+FROM node:24-alpine
 
 # Install Docker CLI, Docker Compose, and shell utilities to interact with the host Docker socket
 RUN apk add --no-cache \
