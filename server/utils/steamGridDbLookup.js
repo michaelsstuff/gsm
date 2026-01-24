@@ -2,9 +2,9 @@
 // Returns: { iconUrl } or null
 const axios = require('axios');
 
-const STEAMGRIDDB_API_KEY = process.env.STEAMGRIDDB_API_KEY;
 
 async function getSteamGridDbIcon(appId, gameName) {
+  const STEAMGRIDDB_API_KEY = process.env.STEAMGRIDDB_API_KEY;
   if (!STEAMGRIDDB_API_KEY) {
     console.log(`[SteamGridDB] No API key set, skipping icon lookup for appId ${appId}`);
     return null;

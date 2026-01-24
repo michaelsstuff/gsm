@@ -268,8 +268,8 @@ const ComposeEditor = () => {
               {!isEditing && (
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Start from Template</Form.Label>
-                    <Form.Select onChange={handleTemplateSelect}>
+                    <Form.Label htmlFor="template-select">Start from Template</Form.Label>
+                    <Form.Select id="template-select" onChange={handleTemplateSelect}>
                       <option value="">Select a template...</option>
                       {templates.map(template => (
                         <option key={template.id} value={template.id}>
