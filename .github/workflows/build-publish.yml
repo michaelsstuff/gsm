@@ -8,43 +8,16 @@ on:
     types: [created, published]
   workflow_dispatch:
 
-env:
-  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-
 jobs:
   test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service:
-          - name: backend
-            path: ./server
-          - name: frontend
-            path: ./client
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: ${{ matrix.service.path }}/package-lock.json
-
-      - name: Install dependencies
-        working-directory: ${{ matrix.service.path }}
-        run: npm ci
-
-      - name: Run ${{ matrix.service.name }} tests
-        working-directory: ${{ matrix.service.path }}
-        run: npm test
+    uses: ./.github/workflows/test.yml
 
   build-and-push:
     needs: test
     runs-on: ubuntu-latest
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
     strategy:
       matrix:
         service:
@@ -56,35 +29,29 @@ jobs:
             context: ./client
             dockerfile: ./client/Dockerfile
             image: gsm-frontend
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
-
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_TOKEN }}
       - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service.image }}
+          images: ${{ env.DOCKER_USERNAME }}/${{ matrix.service.image }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest,enable={{is_default_branch}}
-
       - name: Build and push ${{ matrix.service.name }} image
         uses: docker/build-push-action@v5
         with:
@@ -96,14 +63,12 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
       - name: Image digest
         run: echo "Image pushed with digest ${{ steps.meta.outputs.digest }}"
-
       - name: Update Docker Hub Description
         uses: peter-evans/dockerhub-description@v5
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
-          repository: ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service.image }}
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_TOKEN }}
+          repository: ${{ env.DOCKER_USERNAME }}/${{ matrix.service.image }}
           readme-filepath: ./README.md
