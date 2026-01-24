@@ -4,5 +4,5 @@ on:
   pull_request:
 
 jobs:
-  test:
-    uses: ./.github/workflows/merge.yml
+  run_tests:
+    uses: ./.github/workflows/test.yml
