@@ -4,8 +4,7 @@ This project relies on several external services and APIs to provide enhanced fu
 
 ---
 
-## Steam Web API
-- **Purpose:** Fetches game metadata, server details, and workshop information for supported games.
+- **Purpose:** Retrieves the game name, Steam ID, description, and an image (if SteamGridDB is not set up).
 - **Usage:**
   - Used in: `server/utils/steamLookup.js`
 - **Docs:** https://developer.valvesoftware.com/wiki/Steam_Web_API
