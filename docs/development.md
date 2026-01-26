@@ -75,8 +75,6 @@ For faster iteration during development, you can run services locally.
 **Environment Setup for Local Dev:**
 
 ```bash
-
-
 # Set required variables
 export MONGO_PASSWORD=dev_password_12345
 export SESSION_SECRET=dev_session_secret_12345
@@ -113,39 +111,6 @@ npm start
 ```
 
 Frontend development server will run on `http://localhost:3000`
-
----
-
-## Project Structure
-
-```
-gsm/
-├── client/                    # React frontend
-│   ├── src/
-│   │   ├── components/       # React components
-│   │   ├── context/          # React context providers
-│   │   ├── App.js           # Main app component
-│   │   └── index.js         # Entry point
-│   ├── Dockerfile           # Frontend container
-│   └── nginx.conf           # Nginx configuration
-│
-├── server/                   # Node.js backend
-│   ├── config/              # Configuration
-│   │   └── passport.js      # Authentication config
-│   ├── models/              # MongoDB models
-│   ├── routes/              # API routes
-│   ├── scripts/             # Backup scripts
-│   ├── utils/               # Utility functions
-│   │   ├── backupScheduler.js
-│   │   ├── discordWebhook.js
-│   │   ├── dockerService.js
-│   │   └── passwordSecurity.js
-│   ├── Dockerfile           # Backend container
-│   └── server.js            # Entry point
-│
-├── docker-compose.yml        # Container orchestration
-└── README.md                # User documentation
-```
 
 ---
 
@@ -186,40 +151,6 @@ docker compose -f docker-compose.dev.yml up -d
 
 # Check logs for errors
 docker compose -f docker-compose.dev.yml logs -f
-```
-```
-
----
-
-## Building for Production
-
-### Build Images Locally
-
-```bash
-# Build all images
-docker compose build
-
-# Build specific service
-docker compose build backend
-docker compose build frontend
-```
-
-### Tag Images
-
-```bash
-docker tag gsm-backend:latest yourusername/gsm-backend:v1.0.0
-docker tag gsm-frontend:latest yourusername/gsm-frontend:v1.0.0
-```
-
-### Push to Registry
-
-```bash
-# Login to GitHub Container Registry
-echo $DOCKER_TOKEN | docker login -u USERNAME --password-stdin
-
-# Push images
-docker push yourusername/gsm-backend:v1.0.0
-docker push yourusername/gsm-frontend:v1.0.0
 ```
 
 ---
@@ -310,7 +241,6 @@ Format: `<type>: <short description>` - let the code changes speak for themselve
 ### Backend Issues
 
 ```bash
-```bash
 # Check backend logs
 docker compose -f docker-compose.dev.yml logs backend
 
@@ -320,11 +250,8 @@ docker exec -it gsm-backend sh
 # Check MongoDB connection
 docker exec -it gsm-mongodb mongosh -u admin -p password
 ```
-```
 
 ### Frontend Issues
-
-```bash
 ```bash
 # Check frontend logs
 docker compose -f docker-compose.dev.yml logs frontend
@@ -334,7 +261,6 @@ docker exec -it gsm-frontend cat /etc/nginx/conf.d/default.conf
 
 # Enter frontend container
 docker exec -it gsm-frontend sh
-```
 ```
 
 ### Docker Socket Issues
@@ -364,7 +290,6 @@ docker exec -it gsm-backend docker ps
 ### Code Review
 
 All PRs require:
-- Clean commit history
 - Tests passing (when implemented)
 - No merge conflicts
 - Clear description of changes
@@ -409,7 +334,6 @@ rm -rf server/node_modules client/node_modules
 # Rebuild from scratch
 docker compose -f docker-compose.dev.yml build --no-cache
 docker compose -f docker-compose.dev.yml up -d
-```
 ```
 
 ---
