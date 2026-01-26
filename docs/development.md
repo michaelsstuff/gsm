@@ -207,19 +207,19 @@ docker compose build frontend
 ### Tag Images
 
 ```bash
-docker tag gsm-backend:latest ghcr.io/yourusername/gsm-backend:v1.0.0
-docker tag gsm-frontend:latest ghcr.io/yourusername/gsm-frontend:v1.0.0
+docker tag gsm-backend:latest yourusername/gsm-backend:v1.0.0
+docker tag gsm-frontend:latest yourusername/gsm-frontend:v1.0.0
 ```
 
 ### Push to Registry
 
 ```bash
 # Login to GitHub Container Registry
-echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+echo $DOCKER_TOKEN | docker login -u USERNAME --password-stdin
 
 # Push images
-docker push ghcr.io/yourusername/gsm-backend:v1.0.0
-docker push ghcr.io/yourusername/gsm-frontend:v1.0.0
+docker push yourusername/gsm-backend:v1.0.0
+docker push yourusername/gsm-frontend:v1.0.0
 ```
 
 ---

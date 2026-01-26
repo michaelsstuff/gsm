@@ -143,7 +143,7 @@ services:
       - gsm-network
 
   backend:
-    image: ghcr.io/michaelsstuff/gsm-backend:latest
+    image: michaelsstuff/gsm-backend:latest
     container_name: gsm-backend
     restart: unless-stopped
     depends_on:
@@ -172,7 +172,7 @@ services:
       - gsm-network
 
   frontend:
-    image: ghcr.io/michaelsstuff/gsm-frontend:latest
+    image: michaelsstuff/gsm-frontend:latest
     container_name: gsm-frontend
     restart: unless-stopped
     depends_on:
