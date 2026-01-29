@@ -12,6 +12,7 @@
 
 Web application for managing game servers running as Docker containers. Features real-time status monitoring, backup scheduling, and Discord notifications via a secure admin interface.
 
+
 ## Table of Contents
 
 - [Features](#features)
@@ -21,27 +22,33 @@ Web application for managing game servers running as Docker containers. Features
 - [Management](#management)
 - [Volume Mounts](#volume-mounts)
 - [Game Server Backups](#game-server-backups)
+- [External Integrations](#external-integrations)
 - [Troubleshooting](#troubleshooting)
 - [Migration Guide](#migration-guide)
 - [Development](#development)
 - [License](#license)
 - [Contributing](#contributing)
 
-## What This Is (and Isn't)
 
-**GSM is a management interface** for game servers that already exist as Docker containers. It provides a web UI to:
-- Monitor status of your game server containers
-- Start, stop, and restart containers
-- Schedule and manage backups
-- View server details and connection info
+## What This Is
 
-**GSM does NOT:**
-- Create or provision new game servers
-- Install game server software
-- Manage game server configurations
-- Replace tools like LinuxGSM, AMP, or Pterodactyl
+**GSM is a modern web-based platform for managing, provisioning, and controlling game servers using Docker Compose.**
 
-Your game servers must already be running as Docker containers before adding them to GSM.
+With GSM, you can:
+- Create and deploy new game servers from Compose templates via the web UI
+- Monitor real-time status of all managed servers
+- Start, stop, restart, and remove game server containers
+- Schedule and manage automated backups (with Discord notifications)
+- View and edit server details, connection info, and configuration
+- Manage Compose files and server definitions directly in the browser
+
+GSM supports both managing existing Docker containers and provisioning new ones, all from a secure, role-based admin interface. See the documentation for advanced Compose management, backup strategies, and integration details.
+
+
+## External Integrations
+
+This project uses several external APIs and services for enhanced functionality, security, and game metadata. See [docs/integrations.md](docs/integrations.md) for a full list and details on each integration.
+
 
 ## Features
 
@@ -130,6 +137,7 @@ services:
       - mongodb-data:/data/db
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
+      # MongoDB requires the variable name MONGO_INITDB_ROOT_PASSWORD, but you only need to set MONGO_PASSWORD in your .env
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD must be set}
     networks:
       - gsm-network
@@ -147,17 +155,19 @@ services:
       retries: 5
       start_period: 30s
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ${BACKUP_PATH:-./backups}:/app/backups
-      - ${GAME_VOLUMES_PATH:-/var/opt/container-volumes}:/app/container-volumes:ro
+      - /var/run/docker.sock:/var/run/docker.sock                # REQUIRED: Docker API access
+      - ${BACKUP_PATH:-./backups}:/app/backups                   # REQUIRED: Backup storage path
+      - ${GAME_VOLUMES_PATH:-/var/opt/container-volumes}:/app/container-volumes:ro # OPTIONAL: Game server data for backups
+
     environment:
-      NODE_ENV: production
-      PORT: 5000
-      CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}
-      MONGO_URI: mongodb://admin:${MONGO_PASSWORD}@mongodb:27017/gameserver-manager?authSource=admin
-      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set}
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
-      BACKUP_PATH: /app/backups
+      NODE_ENV: production                                       # REQUIRED: Set to 'production'
+      PORT: 5000                                                 # REQUIRED: Backend port
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}           # OPTIONAL: Frontend URL (for CORS)
+      MONGO_URI: mongodb://admin:${MONGO_PASSWORD}@mongodb:27017/gameserver-manager?authSource=admin # REQUIRED: MongoDB connection string
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set} # REQUIRED: Session secret
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}           # REQUIRED: JWT secret
+      BACKUP_PATH: /app/backups                                  # REQUIRED: Path inside container for backups
+      STEAMGRIDDB_API_KEY: ${STEAMGRIDDB_API_KEY}                # OPTIONAL: SteamGridDB API key for icons
     networks:
       - gsm-network
 

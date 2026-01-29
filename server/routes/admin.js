@@ -4,6 +4,7 @@ const GameServer = require('../models/GameServer');
 const User = require('../models/User');
 const dockerService = require('../utils/dockerService');
 const backupScheduler = require('../utils/backupScheduler');
+const { searchSteamGame } = require('../utils/steamLookup');
 
 // Middleware to check if user is authenticated and an admin
 const isAdmin = (req, res, next) => {
@@ -12,6 +13,30 @@ const isAdmin = (req, res, next) => {
   }
   return res.status(403).json({ message: 'Forbidden: Admin access required' });
 };
+
+// @route   GET /api/steam-lookup
+// @desc    Lookup Steam game info by name
+// @access  Admin only
+router.get('/steam-lookup', isAdmin, async (req, res) => {
+  const { name } = req.query;
+  if (!name) return res.status(400).json({ message: 'Missing game name' });
+  try {
+    const result = await searchSteamGame(name);
+    if (!result) return res.json({});
+    const { mapSteamInfoToGameServerFields } = require('../utils/steamLookup');
+    const mapped = mapSteamInfoToGameServerFields(result, name);
+    res.json({
+      appId: mapped.steamAppId,
+      name: mapped.name,
+      storeUrl: mapped.websiteUrl,
+      logoUrl: mapped.logo,
+      description: mapped.description
+    });
+  } catch (err) {
+    console.error('Steam lookup error:', err);
+    res.status(500).json({ message: 'Steam lookup failed' });
+  }
+});
 
 // @route   GET /api/admin/users
 // @desc    Get all users (admin only)
@@ -237,21 +262,30 @@ router.put('/servers/:id', isAdmin, async (req, res) => {
 router.delete('/servers/:id', isAdmin, async (req, res) => {
   try {
     const gameServer = await GameServer.findById(req.params.id);
-    
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
     }
 
+    // Remove the Docker container if it exists
+    const dockerService = require('../utils/dockerService');
+    if (gameServer.containerName) {
+      try {
+        const exists = await dockerService.containerExists(gameServer.containerName);
+        if (exists) {
+          await dockerService.removeContainer(gameServer.containerName);
+        }
+      } catch (err) {
+        console.error('Error removing Docker container:', err);
+      }
+    }
+
     await gameServer.deleteOne();
-    
-    res.json({ message: 'Game server removed' });
+    res.json({ message: 'Game server and Docker container removed' });
   } catch (error) {
     console.error('Error deleting game server:', error);
-    
     if (error.kind === 'ObjectId') {
       return res.status(404).json({ message: 'Game server not found' });
     }
-    
     res.status(500).json({ message: 'Server error' });
   }
 });

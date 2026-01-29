@@ -1,0 +1,27 @@
+# Minecraft Java Server
+# Uses itzg/minecraft-server image
+# Documentation: https://docker-minecraft-server.readthedocs.io/
+
+services:
+  minecraft:
+    image: itzg/minecraft-server
+    container_name: minecraft-java
+    ports:
+      - "25565:25565"
+    environment:
+      EULA: "TRUE"
+      TYPE: "VANILLA"
+      VERSION: "LATEST"
+      MEMORY: "2G"
+      MAX_PLAYERS: "20"
+      MOTD: "A Minecraft Server managed by GSM"
+      DIFFICULTY: "normal"
+      OPS: ""
+      # Uncomment to set whitelist
+      # WHITELIST: "player1,player2"
+      # ENABLE_WHITELIST: "TRUE"
+    volumes:
+      - /var/opt/container-volumes/minecraft-java:/data
+    restart: unless-stopped
+    tty: true
+    stdin_open: true

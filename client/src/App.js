@@ -11,17 +11,27 @@ import Profile from './components/auth/Profile';
 import ServerForm from './components/admin/ServerForm';
 import UserManagement from './components/admin/UserManagement';
 import FileBrowser from './components/admin/FileBrowser';
+import ComposeList from './components/admin/ComposeList';
+import ComposeEditor from './components/admin/ComposeEditor';
 import { useAuth } from './context/AuthContext';
 import './App.css';
 
+
 // Protected route component
 const AdminRoute = ({ children }) => {
-  const { isAuthenticated, user } = useAuth();
-  
+  const { isAuthenticated, user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '40vh' }}>
+        <div className="spinner-border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
   if (!isAuthenticated || (user && user.role !== 'admin')) {
     return <Navigate to="/login" replace />;
   }
-  
   return children;
 };
 
@@ -88,6 +98,30 @@ const App = () => {
               element={
                 <AdminRoute>
                   <FileBrowser />
+                </AdminRoute>
+              } 
+            />
+            <Route 
+              path="/admin/compose" 
+              element={
+                <AdminRoute>
+                  <ComposeList />
+                </AdminRoute>
+              } 
+            />
+            <Route 
+              path="/admin/compose/new" 
+              element={
+                <AdminRoute>
+                  <ComposeEditor />
+                </AdminRoute>
+              } 
+            />
+            <Route 
+              path="/admin/compose/:id" 
+              element={
+                <AdminRoute>
+                  <ComposeEditor />
                 </AdminRoute>
               } 
             />

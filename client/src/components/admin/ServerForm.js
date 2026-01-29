@@ -22,6 +22,8 @@ const ServerForm = () => {
     modsDirectory: '',
     containerName: '',
   });
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState(null);
 
   useEffect(() => {
     const fetchServerData = async () => {
@@ -111,14 +113,61 @@ const ServerForm = () => {
           <Form onSubmit={handleSubmit} className="form-container">
             <Form.Group className="mb-3" controlId="name">
               <Form.Label>Server Name</Form.Label>
-              <Form.Control
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="e.g. Minecraft Server"
-                required
-              />
+              <div className="input-group">
+                <Form.Control
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="e.g. Minecraft Server"
+                  required
+                />
+                <Button
+                  variant="outline-info"
+                  disabled={lookupLoading || !formData.name}
+                  onClick={async () => {
+                    setLookupLoading(true);
+                    setLookupError(null);
+                    try {
+                      const res = await axios.get(`/api/admin/steam-lookup?name=${encodeURIComponent(formData.name)}`);
+                      const { appId, name, storeUrl, logoUrl, description } = res.data || {};
+                      if (appId) {
+                        // Detect fallback: if logoUrl contains 'steamstatic' or matches tiny_image/header_image pattern
+                        let steamGridDbFailed = false;
+                        if (logoUrl && (logoUrl.includes('steamstatic.com') || logoUrl.includes('store.steampowered.com'))) {
+                          steamGridDbFailed = true;
+                        }
+                        setFormData(f => ({
+                          ...f,
+                          steamAppId: appId,
+                          name: name || f.name,
+                          websiteUrl: storeUrl || f.websiteUrl,
+                          logo: logoUrl || f.logo,
+                          description: description || f.description
+                        }));
+                        if (steamGridDbFailed) {
+                          setLookupError('Warning: SteamGridDB icon lookup failed. Using Steam logo instead.');
+                        } else {
+                          setLookupError(null);
+                        }
+                      } else {
+                        setLookupError('Steam lookup failed.');
+                      }
+                    } catch (err) {
+                      setLookupError('Steam lookup failed.');
+                    }
+                    setLookupLoading(false);
+                  }}
+                  style={{ minWidth: '120px' }}
+                >
+                  {lookupLoading ? 'Looking up...' : 'Lookup'}
+                </Button>
+              </div>
+              {lookupError && (
+                <Alert variant="warning" className="mt-2" onClose={() => setLookupError(null)} dismissible>
+                  {lookupError}
+                </Alert>
+              )}
             </Form.Group>
 
             <Form.Group className="mb-3" controlId="connectionString">
@@ -168,7 +217,7 @@ const ServerForm = () => {
             </Form.Group>
 
             <Form.Group className="mb-3" controlId="logo">
-              <Form.Label>Logo URL</Form.Label>
+              <Form.Label>Logo/Icon URL</Form.Label>
               <div className="input-group">
                 <Form.Control
                   type="text"

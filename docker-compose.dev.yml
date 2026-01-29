@@ -1,20 +1,4 @@
 services:
-  nginx-proxy-manager:
-    image: jc21/nginx-proxy-manager:latest
-    container_name: gsm-proxy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "81:81"
-    volumes:
-      - gsm-proxy-data:/data
-      - gsm-proxy-letsencrypt:/etc/letsencrypt
-    networks:
-      - gsm-network
-    environment:
-      DISABLE_IPV6: ${DISABLE_IPV6:-false}
-
   mongodb:
     image: mongo:5.0
     container_name: gsm-mongodb
@@ -29,7 +13,9 @@ services:
       - gsm-network
 
   backend:
-    image: michaelsstuff/gsm-backend:latest
+    build:
+      context: ./server
+      dockerfile: Dockerfile
     container_name: gsm-backend
     restart: unless-stopped
     depends_on:
@@ -46,7 +32,7 @@ services:
       - ${GAME_VOLUMES_PATH:-/var/opt/container-volumes}:/app/container-volumes:ro # OPTIONAL: Game server data for backups
 
     environment:
-      NODE_ENV: production                                       # REQUIRED: Set to 'production'
+      NODE_ENV: development                                      # REQUIRED: Set to 'development'
       PORT: 5000                                                 # REQUIRED: Backend port
       CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}           # OPTIONAL: Frontend URL (for CORS)
       MONGO_URI: mongodb://admin:${MONGO_PASSWORD}@mongodb:27017/gameserver-manager?authSource=admin # REQUIRED: MongoDB connection string
@@ -56,9 +42,13 @@ services:
       STEAMGRIDDB_API_KEY: ${STEAMGRIDDB_API_KEY}                # OPTIONAL: SteamGridDB API key for icons
     networks:
       - gsm-network
+    ports:
+      - "5000:5000"
 
   frontend:
-    image: michaelsstuff/gsm-frontend:latest
+    build:
+      context: ./client
+      dockerfile: Dockerfile
     container_name: gsm-frontend
     restart: unless-stopped
     depends_on:
@@ -66,6 +56,8 @@ services:
         condition: service_healthy
     networks:
       - gsm-network
+    ports:
+      - "3000:80"
 
 networks:
   gsm-network:
@@ -73,5 +65,3 @@ networks:
 
 volumes:
   mongodb-data:
-  gsm-proxy-data:
-  gsm-proxy-letsencrypt:

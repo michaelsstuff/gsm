@@ -1,3 +1,22 @@
+## Local Development Workflow
+
+For local development, use the dedicated `docker-compose.dev.yml` file. This file:
+
+- Builds backend and frontend from source
+- Exposes backend (5000) and frontend (3000) ports for direct access
+- Keeps production `docker-compose.yml` clean and secure
+
+### Usage
+
+Start development stack:
+
+```
+docker compose -f docker-compose.dev.yml up -d
+```
+
+Access the frontend at `http://localhost:3000` and backend at `http://localhost:5000`.
+
+For production, always use the main `docker-compose.yml`.
 # Development Guide
 
 This guide is for developers who want to build Game Server Manager from source, contribute to the project, or customize it for their needs.
@@ -28,7 +47,7 @@ cp .env.example .env
 Edit `.env` and set your values:
 
 ```env
-MONGO_INITDB_ROOT_PASSWORD=dev_password_12345
+MONGO_PASSWORD=dev_password_12345
 SESSION_SECRET=dev_session_secret_12345
 JWT_SECRET=dev_jwt_secret_12345
 BACKUP_PATH=./backups
@@ -37,14 +56,14 @@ BACKUP_PATH=./backups
 ### 3. Build and Start
 
 ```bash
-docker compose build
-docker compose up -d
+docker compose -f docker-compose.dev.yml build
+docker compose -f docker-compose.dev.yml up -d
 ```
 
 ### 4. View Logs
 
 ```bash
-docker compose logs -f
+docker compose -f docker-compose.dev.yml logs -f
 ```
 
 ---
@@ -57,7 +76,7 @@ For faster iteration during development, you can run services locally.
 
 ```bash
 # Set required variables
-export MONGO_INITDB_ROOT_PASSWORD=dev_password_12345
+export MONGO_PASSWORD=dev_password_12345
 export SESSION_SECRET=dev_session_secret_12345
 export JWT_SECRET=dev_jwt_secret_12345
 
@@ -95,39 +114,6 @@ Frontend development server will run on `http://localhost:3000`
 
 ---
 
-## Project Structure
-
-```
-gsm/
-├── client/                    # React frontend
-│   ├── src/
-│   │   ├── components/       # React components
-│   │   ├── context/          # React context providers
-│   │   ├── App.js           # Main app component
-│   │   └── index.js         # Entry point
-│   ├── Dockerfile           # Frontend container
-│   └── nginx.conf           # Nginx configuration
-│
-├── server/                   # Node.js backend
-│   ├── config/              # Configuration
-│   │   └── passport.js      # Authentication config
-│   ├── models/              # MongoDB models
-│   ├── routes/              # API routes
-│   ├── scripts/             # Backup scripts
-│   ├── utils/               # Utility functions
-│   │   ├── backupScheduler.js
-│   │   ├── discordWebhook.js
-│   │   ├── dockerService.js
-│   │   └── passwordSecurity.js
-│   ├── Dockerfile           # Backend container
-│   └── server.js            # Entry point
-│
-├── docker-compose.yml        # Container orchestration
-└── README.md                # User documentation
-```
-
----
-
 ## Making Changes
 
 ### Frontend Changes
@@ -136,8 +122,8 @@ gsm/
 2. If running locally: Changes auto-reload via webpack dev server
 3. If using Docker:
    ```bash
-   docker compose build frontend
-   docker compose up -d frontend
+  docker compose -f docker-compose.dev.yml build frontend
+  docker compose -f docker-compose.dev.yml up -d frontend
    ```
 
 ### Backend Changes
@@ -146,8 +132,8 @@ gsm/
 2. If running locally: Restart node server
 3. If using Docker:
    ```bash
-   docker compose build backend
-   docker compose up -d backend
+  docker compose -f docker-compose.dev.yml build backend
+  docker compose -f docker-compose.dev.yml up -d backend
    ```
 
 ### Testing Changes
@@ -155,48 +141,16 @@ gsm/
 Always test both locally and in containers before submitting PRs:
 
 ```bash
+```bash
 # Build fresh images
-docker compose build --no-cache
+docker compose -f docker-compose.dev.yml build --no-cache
 
 # Start with clean volumes
-docker compose down -v
-docker compose up -d
+docker compose -f docker-compose.dev.yml down -v
+docker compose -f docker-compose.dev.yml up -d
 
 # Check logs for errors
-docker compose logs -f
-```
-
----
-
-## Building for Production
-
-### Build Images Locally
-
-```bash
-# Build all images
-docker compose build
-
-# Build specific service
-docker compose build backend
-docker compose build frontend
-```
-
-### Tag Images
-
-```bash
-docker tag gsm-backend:latest ghcr.io/yourusername/gsm-backend:v1.0.0
-docker tag gsm-frontend:latest ghcr.io/yourusername/gsm-frontend:v1.0.0
-```
-
-### Push to Registry
-
-```bash
-# Login to GitHub Container Registry
-echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
-
-# Push images
-docker push ghcr.io/yourusername/gsm-backend:v1.0.0
-docker push ghcr.io/yourusername/gsm-frontend:v1.0.0
+docker compose -f docker-compose.dev.yml logs -f
 ```
 
 ---
@@ -288,7 +242,7 @@ Format: `<type>: <short description>` - let the code changes speak for themselve
 
 ```bash
 # Check backend logs
-docker compose logs backend
+docker compose -f docker-compose.dev.yml logs backend
 
 # Enter backend container
 docker exec -it gsm-backend sh
@@ -298,10 +252,9 @@ docker exec -it gsm-mongodb mongosh -u admin -p password
 ```
 
 ### Frontend Issues
-
 ```bash
 # Check frontend logs
-docker compose logs frontend
+docker compose -f docker-compose.dev.yml logs frontend
 
 # Check nginx config
 docker exec -it gsm-frontend cat /etc/nginx/conf.d/default.conf
@@ -337,7 +290,6 @@ docker exec -it gsm-backend docker ps
 ### Code Review
 
 All PRs require:
-- Clean commit history
 - Tests passing (when implemented)
 - No merge conflicts
 - Clear description of changes
@@ -369,8 +321,9 @@ sudo chown -R $(id -u):$(id -g) ./backups
 ### Clean Slate Rebuild
 
 ```bash
+```bash
 # Stop everything
-docker compose down -v
+docker compose -f docker-compose.dev.yml down -v
 
 # Remove images
 docker rmi gsm-backend gsm-frontend
@@ -379,8 +332,8 @@ docker rmi gsm-backend gsm-frontend
 rm -rf server/node_modules client/node_modules
 
 # Rebuild from scratch
-docker compose build --no-cache
-docker compose up -d
+docker compose -f docker-compose.dev.yml build --no-cache
+docker compose -f docker-compose.dev.yml up -d
 ```
 
 ---

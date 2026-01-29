@@ -1,0 +1,27 @@
+# 7 Days to Die Dedicated Server
+# Uses vinanrra/7dtd-server image
+# Documentation: https://github.com/vinanrra/Docker-7DaysToDie
+
+services:
+  7daystodie:
+    image: vinanrra/7dtd-server:latest
+    container_name: 7daystodie
+    ports:
+      - "26900:26900/tcp"
+      - "26900:26900/udp"
+      - "26901:26901/udp"
+      - "26902:26902/udp"
+      - "8081:8081/tcp"  # Web dashboard
+    environment:
+      START_MODE: "1"  # 1=Start server, 2=Update/Validate, 3=Update/Start, 4=Backup
+      VERSION: "stable"
+      PUID: "1000"
+      PGID: "1000"
+      TimeZone: "UTC"
+      TEST_ALERT: "NO"
+      ALLOC_FIXES: "YES"
+    volumes:
+      - /var/opt/container-volumes/7daystodie/serverfiles:/home/sdtdserver/serverfiles
+      - /var/opt/container-volumes/7daystodie/log:/home/sdtdserver/log
+      - /var/opt/container-volumes/7daystodie/backups:/home/sdtdserver/lgsm/backup
+    restart: unless-stopped

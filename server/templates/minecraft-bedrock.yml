@@ -1,0 +1,23 @@
+# Minecraft Bedrock Server
+# Uses itzg/minecraft-bedrock-server image
+# Documentation: https://github.com/itzg/docker-minecraft-bedrock-server
+
+services:
+  minecraft-bedrock:
+    image: itzg/minecraft-bedrock-server
+    container_name: minecraft-bedrock
+    ports:
+      - "19132:19132/udp"
+    environment:
+      EULA: "TRUE"
+      SERVER_NAME: "Bedrock Server"
+      GAMEMODE: "survival"
+      DIFFICULTY: "normal"
+      MAX_PLAYERS: "10"
+      LEVEL_NAME: "Bedrock level"
+      # Set to TRUE and add player XUIDs to whitelist
+      # WHITE_LIST: "TRUE"
+      # WHITE_LIST_USERS: "xuid1,xuid2"
+    volumes:
+      - /var/opt/container-volumes/minecraft-bedrock:/data
+    restart: unless-stopped

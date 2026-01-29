@@ -16,6 +16,8 @@ dotenv.config();
 const authRoutes = require('./routes/auth');
 const gameServerRoutes = require('./routes/gameServers');
 const adminRoutes = require('./routes/admin');
+const composeRoutes = require('./routes/compose');
+const templatesRoutes = require('./routes/templates');
 
 // Initialize Express app
 const app = express();
@@ -65,6 +67,8 @@ app.get('/api/auth/status', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/servers', gameServerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin/compose', composeRoutes);
+app.use('/api/admin/templates', templatesRoutes);
 
 // Note: Frontend is served by a separate nginx container in Docker deployment
 // Backend only handles API routes
