@@ -18,6 +18,8 @@ jobs:
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+      GHCR_USERNAME: ${{ github.actor }}
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     strategy:
       matrix:
         service:
@@ -41,11 +43,19 @@ jobs:
         with:
           username: ${{ env.DOCKER_USERNAME }}
           password: ${{ env.DOCKER_TOKEN }}
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ env.GHCR_USERNAME }}
+          password: ${{ env.GHCR_TOKEN }}
       - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_USERNAME }}/${{ matrix.service.image }}
+          images: |
+            ${{ env.DOCKER_USERNAME }}/${{ matrix.service.image }}
+            ghcr.io/${{ github.repository_owner }}/gsm-${{ matrix.service.name }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -63,6 +73,19 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Scan container image for vulnerabilities
+        uses: Azure/container-scan@v0
+        with:
+          image-name: ${{ env.DOCKER_USERNAME }}/${{ matrix.service.image }}:latest
+          run-quality-checks: true
+          severity-threshold: CRITICAL
+          fail-on-severity: true
+      - name: Attest build provenance for ${{ matrix.service.name }}
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ steps.meta.outputs.tags }}
+          subject-digest: ${{ steps.meta.outputs.digest }}
+          push-to-registry: true
       - name: Image digest
         run: echo "Image pushed with digest ${{ steps.meta.outputs.digest }}"
       - name: Update Docker Hub Description
