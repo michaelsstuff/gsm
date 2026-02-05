@@ -136,8 +136,8 @@ jobs:
         run: echo "Image ghcr.io/${{ github.actor }}/gsm-${{ matrix.service.name }}:latest published (already pushed in scan-attest step)"
 
   release-dockerhub:
-    needs: build-ghcr
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
+    needs: scan-attest-ghcr
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || github.event_name == 'release'
     runs-on: ubuntu-latest
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
