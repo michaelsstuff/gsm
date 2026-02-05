@@ -57,6 +57,9 @@ jobs:
             context: ./client
             dockerfile: ./client/Dockerfile
             image: gsm-frontend
+    outputs:
+      backend-digest: ${{ steps.set-backend-digest.outputs.digest }}
+      frontend-digest: ${{ steps.set-frontend-digest.outputs.digest }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -93,6 +96,17 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Set digest output
+        id: set-digest
+        run: echo "digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+      - name: Set backend digest output
+        if: matrix.service.name == 'backend'
+        id: set-backend-digest
+        run: echo "digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+      - name: Set frontend digest output
+        if: matrix.service.name == 'frontend'
+        id: set-frontend-digest
+        run: echo "digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
 
   scan:
     permissions:
@@ -154,7 +168,7 @@ jobs:
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ghcr.io/${{ github.actor }}/gsm-${{ matrix.service.name }}:latest
-          subject-digest: ${{ needs.build-ghcr.outputs.image-digest }}
+          subject-digest: ${{ matrix.service.name == 'backend' && needs.build-ghcr.outputs.backend-digest || needs.build-ghcr.outputs.frontend-digest }}
           push-to-registry: true
 
   push-dockerhub:
