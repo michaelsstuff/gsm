@@ -36,6 +36,9 @@ jobs:
         run: npm test
 
   build-ghcr:
+    permissions:
+      contents: read
+      packages: write
     name: Build & Push to GHCR
     needs: test
     if: |
@@ -92,6 +95,9 @@ jobs:
           cache-to: type=gha,mode=max
 
   scan:
+    permissions:
+      contents: read
+      packages: read
     name: Scan Image
     needs: build-ghcr
     if: |
@@ -120,6 +126,11 @@ jobs:
           fail-on-severity: true
 
   attest:
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
     name: Attest Image Provenance
     needs: build-ghcr
     if: |
