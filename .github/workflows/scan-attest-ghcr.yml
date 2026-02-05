@@ -1,0 +1,45 @@
+name: Scan and Attest GHCR Images
+
+on:
+  workflow_call:
+    inputs:
+      matrix:
+        required: true
+        type: object
+      image-digest:
+        required: true
+        type: string
+
+jobs:
+  scan-attest-ghcr:
+    runs-on: ubuntu-latest
+    env:
+      GHCR_USERNAME: ${{ github.actor }}
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      matrix: ${{ inputs.matrix }}
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ env.GHCR_USERNAME }}
+          password: ${{ env.GHCR_TOKEN }}
+      - name: Push ${{ matrix.service.name }} image to GHCR
+        run: |
+          docker push ghcr.io/${{ github.actor }}/gsm-${{ matrix.service.name }}:latest
+      - name: Scan container image for vulnerabilities
+        uses: Azure/container-scan@v0
+        with:
+          image-name: ghcr.io/${{ github.actor }}/gsm-${{ matrix.service.name }}:latest
+          run-quality-checks: true
+          severity-threshold: CRITICAL
+          fail-on-severity: true
+      - name: Attest build provenance for ${{ matrix.service.name }}
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ghcr.io/${{ github.actor }}/gsm-${{ matrix.service.name }}:latest
+          subject-digest: ${{ inputs.image-digest }}
+          push-to-registry: true
+      - name: Image digest
+        run: echo "Image pushed with digest ${{ inputs.image-digest }}"

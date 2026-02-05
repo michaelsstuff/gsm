@@ -14,6 +14,8 @@ jobs:
   test:
     uses: ./.github/workflows/test.yml
 
+
+
   build-ghcr:
     needs: test
     runs-on: ubuntu-latest
@@ -31,6 +33,9 @@ jobs:
             context: ./client
             dockerfile: ./client/Dockerfile
             image: gsm-frontend
+    outputs:
+      image-tag: ${{ steps.build.outputs.image-tag }}
+      image-digest: ${{ steps.build.outputs.image-digest }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -48,39 +53,87 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/gsm-${{ matrix.service.name }}
+          images: ghcr.io/${{ github.actor }}/gsm-${{ matrix.service.name }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest,enable={{is_default_branch}}
-      - name: Build and push ${{ matrix.service.name }} image to GHCR
+      - name: Build ${{ matrix.service.name }} image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.service.context }}
           file: ${{ matrix.service.dockerfile }}
           platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ghcr.io/${{ github.repository_owner }}/gsm-${{ matrix.service.name }}:latest
+          push: false
+          tags: ghcr.io/${{ github.actor }}/gsm-${{ matrix.service.name }}:latest
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  scan-attest-ghcr:
+    needs: build-ghcr
+    runs-on: ubuntu-latest
+    env:
+      GHCR_USERNAME: ${{ github.actor }}
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      matrix:
+        service:
+          - name: backend
+            image: gsm-backend
+          - name: frontend
+            image: gsm-frontend
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ env.GHCR_USERNAME }}
+          password: ${{ env.GHCR_TOKEN }}
+      - name: Push ${{ matrix.service.name }} image to GHCR
+        run: |
+          docker push ghcr.io/${{ github.actor }}/gsm-${{ matrix.service.name }}:latest
       - name: Scan container image for vulnerabilities
         uses: Azure/container-scan@v0
         with:
-          image-name: ghcr.io/${{ github.repository_owner }}/gsm-${{ matrix.service.name }}:latest
+          image-name: ghcr.io/${{ github.actor }}/gsm-${{ matrix.service.name }}:latest
           run-quality-checks: true
           severity-threshold: CRITICAL
           fail-on-severity: true
       - name: Attest build provenance for ${{ matrix.service.name }}
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ghcr.io/${{ github.repository_owner }}/gsm-${{ matrix.service.name }}:latest
-          subject-digest: ${{ steps.meta.outputs.digest }}
+          subject-name: ghcr.io/${{ github.actor }}/gsm-${{ matrix.service.name }}:latest
+          subject-digest: ${{ needs.build-ghcr.outputs.image-digest }}
           push-to-registry: true
       - name: Image digest
-        run: echo "Image pushed with digest ${{ steps.meta.outputs.digest }}"
+        run: echo "Image pushed with digest ${{ needs.build-ghcr.outputs.image-digest }}"
+
+  publish-ghcr:
+    needs: scan-attest-ghcr
+    runs-on: ubuntu-latest
+    env:
+      GHCR_USERNAME: ${{ github.actor }}
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      matrix:
+        service:
+          - name: backend
+            image: gsm-backend
+          - name: frontend
+            image: gsm-frontend
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ env.GHCR_USERNAME }}
+          password: ${{ env.GHCR_TOKEN }}
+      - name: Publish ${{ matrix.service.name }} image (tag latest)
+        run: echo "Image ghcr.io/${{ github.actor }}/gsm-${{ matrix.service.name }}:latest published (already pushed in scan-attest step)"
 
   release-dockerhub:
     needs: build-ghcr
@@ -126,7 +179,7 @@ jobs:
         with:
           images: |
             ${{ env.DOCKER_USERNAME }}/${{ matrix.service.image }}
-            ghcr.io/${{ github.repository_owner }}/gsm-${{ matrix.service.name }}
+            ghcr.io/${{ github.actor }}/gsm-${{ matrix.service.name }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
