@@ -167,7 +167,7 @@ jobs:
       - name: Attest build provenance for ${{ matrix.service.name }}
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ghcr.io/${{ github.actor }}/gsm-${{ matrix.service.name }}:latest
+          subject-name: ghcr.io/${{ github.actor }}/gsm-${{ matrix.service.name }}
           subject-digest: ${{ matrix.service.name == 'backend' && needs.build-ghcr.outputs.backend-digest || needs.build-ghcr.outputs.frontend-digest }}
           push-to-registry: true
 
