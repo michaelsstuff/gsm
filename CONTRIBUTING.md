@@ -79,6 +79,7 @@ Format:
 - Never commit secrets (`.env`, API keys, tokens, passwords).
 - Use `.env.example` for placeholders only.
 - If you discover a security issue, do not post sensitive details publicly in issues.
+- Follow `SECURITY.md` for the private vulnerability reporting process.
 
 ## Community Expectations
 

@@ -26,6 +26,7 @@ Web application for managing game servers running as Docker containers. Features
 - [Troubleshooting](#troubleshooting)
 - [Migration Guide](#migration-guide)
 - [Development](#development)
+- [Security](#security)
 - [License](#license)
 - [Contributing](#contributing)
 
@@ -331,6 +332,10 @@ See [docs/migration-guide.md](docs/migration-guide.md) for step-by-step instruct
 ## Development
 
 See [docs/development.md](docs/development.md) for building and running GSM from source.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for vulnerability reporting instructions and supported versions.
 
 ## License
 
