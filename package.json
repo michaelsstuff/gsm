@@ -20,7 +20,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "npm": "^11.3.0"
+    "npm": "^11.10.0"
   },
   "devDependencies": {
     "concurrently": "^8.0.1"
