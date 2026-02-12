@@ -330,7 +330,7 @@ See [docs/migration-guide.md](docs/migration-guide.md) for step-by-step instruct
 
 ## Development
 
-See [docs/development.md](docs/development.md) for building from source, project structure, and contribution guidelines.
+See [docs/development.md](docs/development.md) for building and running GSM from source.
 
 ## License
 
@@ -338,4 +338,4 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 ## Contributing
 
-Issues and pull requests welcome: https://github.com/michaelsstuff/gsm
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines, pull request expectations, and testing requirements.
