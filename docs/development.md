@@ -321,7 +321,6 @@ sudo chown -R $(id -u):$(id -g) ./backups
 ### Clean Slate Rebuild
 
 ```bash
-```bash
 # Stop everything
 docker compose -f docker-compose.dev.yml down -v
 
