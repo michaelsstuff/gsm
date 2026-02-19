@@ -19,9 +19,6 @@
   ],
   "author": "",
   "license": "MIT",
-  "dependencies": {
-    "npm": "^11.9.0"
-  },
   "devDependencies": {
     "concurrently": "^8.0.1"
   }
