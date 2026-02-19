@@ -51,6 +51,8 @@ class PasswordSecurityService {
    * @returns {string} - SHA-1 hash in uppercase
    */
   generateSHA1Hash(password) {
+    // SHA-1 is required by the HIBP k-anonymity range API protocol.
+    // Stored user passwords are hashed separately with bcrypt in the User model.
     return crypto
       .createHash('sha1')
       .update(password, 'utf8')

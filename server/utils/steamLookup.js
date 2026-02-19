@@ -3,6 +3,24 @@
 const axios = require('axios');
 const { getSteamGridDbIcon } = require('./steamGridDbLookup');
 
+const isSteamHostedAssetUrl = (value) => {
+  if (typeof value !== 'string' || !value.trim()) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+    return (
+      hostname === 'store.steampowered.com' ||
+      hostname === 'steamstatic.com' ||
+      hostname.endsWith('.steamstatic.com')
+    );
+  } catch (error) {
+    return false;
+  }
+};
+
 async function searchSteamGame(gameName) {
   // Step 1: Search Steam Store for the game
   const searchRes = await axios.get('https://store.steampowered.com/api/storesearch', {
@@ -53,7 +71,7 @@ function mapSteamInfoToGameServerFields(steamInfo, fallbackName = '') {
   if (!steamInfo || !steamInfo.appId) return {};
   let steamGridDbFailed = false;
   const logo = steamInfo.logoUrl || '';
-  if (logo && (logo.includes('steamstatic.com') || logo.includes('store.steampowered.com'))) {
+  if (isSteamHostedAssetUrl(logo)) {
     steamGridDbFailed = true;
   }
   return {

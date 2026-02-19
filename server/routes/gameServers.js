@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const GameServer = require('../models/GameServer');
 const dockerService = require('../utils/dockerService');
 const path = require('path');
@@ -13,6 +14,15 @@ const isAuthenticated = (req, res, next) => {
   }
   return res.status(401).json({ message: 'Unauthorized: Please log in' });
 };
+
+const gameServerRouteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 180,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+router.use(gameServerRouteLimiter);
 
 // @route   GET /api/servers
 // @desc    Get all game servers (public view)

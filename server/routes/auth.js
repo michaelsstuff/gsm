@@ -3,32 +3,76 @@ const router = express.Router();
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
 const passwordSecurity = require('../utils/passwordSecurity');
+const { requireAuthenticated } = require('../utils/authMiddleware');
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const normalizeInputString = (value) => (typeof value === 'string' ? value.trim() : '');
+const authRouteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+const credentialLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
-// Middleware to check if user is authenticated
-const isAuthenticated = (req, res, next) => {
-  if (req.isAuthenticated()) {
-    return next();
+const isValidEmail = (email) => {
+  if (typeof email !== 'string') {
+    return false;
   }
-  return res.status(401).json({ message: 'Unauthorized: Please log in' });
+
+  const normalized = email.trim();
+  if (!normalized || normalized.length > 254) {
+    return false;
+  }
+
+  const atIndex = normalized.indexOf('@');
+  if (atIndex <= 0 || atIndex !== normalized.lastIndexOf('@') || atIndex === normalized.length - 1) {
+    return false;
+  }
+
+  if (/\s/.test(normalized)) {
+    return false;
+  }
+
+  const localPart = normalized.slice(0, atIndex);
+  const domainPart = normalized.slice(atIndex + 1);
+
+  if (localPart.length > 64 || domainPart.length > 253) {
+    return false;
+  }
+
+  if (localPart.startsWith('.') || localPart.endsWith('.') || localPart.includes('..')) {
+    return false;
+  }
+
+  if (!domainPart.includes('.') || domainPart.startsWith('.') || domainPart.endsWith('.') || domainPart.includes('..')) {
+    return false;
+  }
+
+  return domainPart.split('.').every((label) => {
+    return (
+      label.length > 0 &&
+      label.length <= 63 &&
+      /^[A-Za-z0-9-]+$/.test(label) &&
+      !label.startsWith('-') &&
+      !label.endsWith('-')
+    );
+  });
 };
 
-// Middleware to check if user is admin
-const isAdmin = (req, res, next) => {
-  if (req.isAuthenticated() && req.user.role === 'admin') {
-    return next();
-  }
-  return res.status(403).json({ message: 'Forbidden: Admin access required' });
-};
+router.use(authRouteLimiter);
 
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
-router.post('/register', async (req, res) => {
+router.post('/register', credentialLimiter, async (req, res) => {
   try {
     const username = normalizeInputString(req.body.username);
     const email = normalizeInputString(req.body.email).toLowerCase();
@@ -38,7 +82,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'Username, email, and password are required' });
     }
 
-    if (!EMAIL_REGEX.test(email)) {
+    if (!isValidEmail(email)) {
       return res.status(400).json({ message: 'Invalid email format' });
     }
     
@@ -108,7 +152,7 @@ router.post('/register', async (req, res) => {
 // @route   POST /api/auth/login
 // @desc    Login user
 // @access  Public
-router.post('/login', (req, res, next) => {
+router.post('/login', credentialLimiter, (req, res, next) => {
   const username = normalizeInputString(req.body?.username);
   const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
@@ -157,7 +201,7 @@ router.post('/login', (req, res, next) => {
 // @route   GET /api/auth/logout
 // @desc    Logout user
 // @access  Private
-router.get('/logout', isAuthenticated, (req, res) => {
+router.get('/logout', requireAuthenticated, (req, res) => {
   req.logout((err) => {
     if (err) {
       return res.status(500).json({ message: 'Logout error' });
@@ -169,7 +213,7 @@ router.get('/logout', isAuthenticated, (req, res) => {
 // @route   GET /api/auth/current
 // @desc    Get current user
 // @access  Private
-router.get('/current', isAuthenticated, (req, res) => {
+router.get('/current', requireAuthenticated, (req, res) => {
   res.json({
     user: {
       id: req.user._id,
@@ -183,7 +227,7 @@ router.get('/current', isAuthenticated, (req, res) => {
 // @route   PUT /api/auth/profile
 // @desc    Update user profile (email and password)
 // @access  Private
-router.put('/profile', isAuthenticated, async (req, res) => {
+router.put('/profile', requireAuthenticated, async (req, res) => {
   try {
     const { email, currentPassword, newPassword } = req.body;
     const userId = req.user._id;
@@ -227,7 +271,7 @@ router.put('/profile', isAuthenticated, async (req, res) => {
 
     // Update email if provided
     if (normalizedEmail && normalizedEmail !== user.email) {
-      if (!EMAIL_REGEX.test(normalizedEmail)) {
+      if (!isValidEmail(normalizedEmail)) {
         return res.status(400).json({ message: 'Invalid email format' });
       }
 
@@ -262,7 +306,7 @@ router.put('/profile', isAuthenticated, async (req, res) => {
 // @route   POST /api/auth/check-password
 // @desc    Check password against HaveIBeenPwned database
 // @access  Public (for real-time checking during registration/password change)
-router.post('/check-password', async (req, res) => {
+router.post('/check-password', credentialLimiter, async (req, res) => {
   try {
     const { password } = req.body;
     

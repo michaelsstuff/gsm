@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const pathLib = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -12,18 +13,20 @@ const User = require('../models/User');
 const dockerService = require('../utils/dockerService');
 const backupScheduler = require('../utils/backupScheduler');
 const { searchSteamGame } = require('../utils/steamLookup');
+const { requireAdmin } = require('../utils/authMiddleware');
 
 const execFilePromise = util.promisify(execFile);
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 const CONTAINER_NAME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/;
 
-// Middleware to check if user is authenticated and an admin
-const isAdmin = (req, res, next) => {
-  if (req.isAuthenticated() && req.user.role === 'admin') {
-    return next();
-  }
-  return res.status(403).json({ message: 'Forbidden: Admin access required' });
-};
+const adminRouteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+router.use(adminRouteLimiter);
 
 router.param('id', (req, res, next, id) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -110,7 +113,7 @@ const dockerPathIsDirectory = async (containerName, filePath) => {
 // @route   GET /api/steam-lookup
 // @desc    Lookup Steam game info by name
 // @access  Admin only
-router.get('/steam-lookup', isAdmin, async (req, res) => {
+router.get('/steam-lookup', requireAdmin, async (req, res) => {
   const { name } = req.query;
   if (!name) return res.status(400).json({ message: 'Missing game name' });
   try {
@@ -134,7 +137,7 @@ router.get('/steam-lookup', isAdmin, async (req, res) => {
 // @route   GET /api/admin/users
 // @desc    Get all users (admin only)
 // @access  Admin only
-router.get('/users', isAdmin, async (req, res) => {
+router.get('/users', requireAdmin, async (req, res) => {
   try {
     // Exclude password field from results
     const users = await User.find().select('-password');
@@ -148,7 +151,7 @@ router.get('/users', isAdmin, async (req, res) => {
 // @route   PUT /api/admin/users/:id/role
 // @desc    Update a user's role
 // @access  Admin only
-router.put('/users/:id/role', isAdmin, async (req, res) => {
+router.put('/users/:id/role', requireAdmin, async (req, res) => {
   try {
     const { role } = req.body;
     
@@ -194,7 +197,7 @@ router.put('/users/:id/role', isAdmin, async (req, res) => {
 // @route   DELETE /api/admin/users/:id
 // @desc    Delete a user
 // @access  Admin only
-router.delete('/users/:id', isAdmin, async (req, res) => {
+router.delete('/users/:id', requireAdmin, async (req, res) => {
   try {
     // Find user by ID
     const user = await User.findById(req.validatedId);
@@ -228,7 +231,7 @@ router.delete('/users/:id', isAdmin, async (req, res) => {
 // @route   POST /api/admin/servers
 // @desc    Create a new game server
 // @access  Admin only
-router.post('/servers', isAdmin, async (req, res) => {
+router.post('/servers', requireAdmin, async (req, res) => {
   try {
       const {
         name,
@@ -287,7 +290,7 @@ router.post('/servers', isAdmin, async (req, res) => {
 // @route   GET /api/admin/servers/:id
 // @desc    Get a specific game server for editing
 // @access  Admin only
-router.get('/servers/:id', isAdmin, async (req, res) => {
+router.get('/servers/:id', requireAdmin, async (req, res) => {
   try {
     const gameServer = await GameServer.findById(req.validatedId);
     
@@ -310,7 +313,7 @@ router.get('/servers/:id', isAdmin, async (req, res) => {
 // @route   PUT /api/admin/servers/:id
 // @desc    Update a game server
 // @access  Admin only
-router.put('/servers/:id', isAdmin, async (req, res) => {
+router.put('/servers/:id', requireAdmin, async (req, res) => {
   try {
     const {
       name,
@@ -358,7 +361,7 @@ router.put('/servers/:id', isAdmin, async (req, res) => {
 // @route   DELETE /api/admin/servers/:id
 // @desc    Delete a game server
 // @access  Admin only
-router.delete('/servers/:id', isAdmin, async (req, res) => {
+router.delete('/servers/:id', requireAdmin, async (req, res) => {
   try {
     const gameServer = await GameServer.findById(req.validatedId);
     if (!gameServer) {
@@ -392,7 +395,7 @@ router.delete('/servers/:id', isAdmin, async (req, res) => {
 // @route   POST /api/admin/servers/:id/command
 // @desc    Run a command on game server
 // @access  Admin only
-router.post('/servers/:id/command', isAdmin, async (req, res) => {
+router.post('/servers/:id/command', requireAdmin, async (req, res) => {
   try {
     const { command } = req.body;
     
@@ -505,7 +508,7 @@ router.post('/servers/:id/command', isAdmin, async (req, res) => {
 // @route   GET /api/admin/servers
 // @desc    Get all game servers (admin view with commands)
 // @access  Admin only
-router.get('/servers', isAdmin, async (req, res) => {
+router.get('/servers', requireAdmin, async (req, res) => {
   try {
     const gameServers = await GameServer.find();
     res.json(gameServers);
@@ -518,7 +521,7 @@ router.get('/servers', isAdmin, async (req, res) => {
 // @route   GET /api/admin/containers
 // @desc    Get all Docker containers
 // @access  Admin only
-router.get('/containers', isAdmin, async (req, res) => {
+router.get('/containers', requireAdmin, async (req, res) => {
   try {
     const containers = await dockerService.listContainers();
     res.json(containers);
@@ -531,7 +534,7 @@ router.get('/containers', isAdmin, async (req, res) => {
 // @route   GET /api/admin/servers/:id/logs
 // @desc    Get container logs for a game server
 // @access  Admin only
-router.get('/servers/:id/logs', isAdmin, async (req, res) => {
+router.get('/servers/:id/logs', requireAdmin, async (req, res) => {
   try {
     const { lines } = req.query;
     const gameServer = await GameServer.findById(req.validatedId);
@@ -563,7 +566,7 @@ router.get('/servers/:id/logs', isAdmin, async (req, res) => {
 // @route   PUT /api/admin/servers/:id/backup-schedule
 // @desc    Update backup schedule for a game server
 // @access  Admin only
-router.put('/servers/:id/backup-schedule', isAdmin, async (req, res) => {
+router.put('/servers/:id/backup-schedule', requireAdmin, async (req, res) => {
   try {
     const { enabled, cronExpression, retention, notifyOnBackup } = req.body;
     
@@ -637,7 +640,7 @@ router.put('/servers/:id/backup-schedule', isAdmin, async (req, res) => {
 // @route   GET /api/admin/servers/:id/backup-status
 // @desc    Get backup status and history for a game server
 // @access  Admin only
-router.get('/servers/:id/backup-status', isAdmin, async (req, res) => {
+router.get('/servers/:id/backup-status', requireAdmin, async (req, res) => {
   try {
     const gameServer = await GameServer.findById(req.validatedId);
     if (!gameServer) {
@@ -677,7 +680,7 @@ router.get('/servers/:id/backup-status', isAdmin, async (req, res) => {
 // @route   GET /api/admin/servers/:id/backup-job
 // @desc    Get current backup job status for a game server
 // @access  Admin only
-router.get('/servers/:id/backup-job', isAdmin, async (req, res) => {
+router.get('/servers/:id/backup-job', requireAdmin, async (req, res) => {
   try {
     const gameServer = await GameServer.findById(req.validatedId);
     if (!gameServer) {
@@ -698,7 +701,7 @@ router.get('/servers/:id/backup-job', isAdmin, async (req, res) => {
 // @route   PUT /api/admin/servers/:id/discord-webhook
 // @desc    Update Discord webhook settings for a game server
 // @access  Admin only
-router.put('/servers/:id/discord-webhook', isAdmin, async (req, res) => {
+router.put('/servers/:id/discord-webhook', requireAdmin, async (req, res) => {
   try {
     const { enabled, url, notifyOnStart, notifyOnStop } = req.body;
     
@@ -744,7 +747,7 @@ router.put('/servers/:id/discord-webhook', isAdmin, async (req, res) => {
 // @route   GET /api/admin/servers/:id/files
 // @desc    Get file listing for a game server container
 // @access  Admin only
-router.get('/servers/:id/files', isAdmin, async (req, res) => {
+router.get('/servers/:id/files', requireAdmin, async (req, res) => {
   try {
     const { path } = req.query;
     const gameServer = await GameServer.findById(req.validatedId);
@@ -823,7 +826,7 @@ router.get('/servers/:id/files', isAdmin, async (req, res) => {
 // @route   GET /api/admin/servers/:id/files/content
 // @desc    Get file content from a game server container
 // @access  Admin only
-router.get('/servers/:id/files/content', isAdmin, async (req, res) => {
+router.get('/servers/:id/files/content', requireAdmin, async (req, res) => {
   try {
     const { path } = req.query;
     const gameServer = await GameServer.findById(req.validatedId);
@@ -878,7 +881,7 @@ router.get('/servers/:id/files/content', isAdmin, async (req, res) => {
 // @route   POST /api/admin/servers/:id/files/save
 // @desc    Save file content to a game server container
 // @access  Admin only
-router.post('/servers/:id/files/save', isAdmin, async (req, res) => {
+router.post('/servers/:id/files/save', requireAdmin, async (req, res) => {
   try {
     const { path, content } = req.body;
     const gameServer = await GameServer.findById(req.validatedId);
@@ -950,7 +953,7 @@ router.post('/servers/:id/files/save', isAdmin, async (req, res) => {
 // @route   POST /api/admin/servers/:id/files/upload
 // @desc    Upload a file to a game server container
 // @access  Admin only
-router.post('/servers/:id/files/upload', isAdmin, async (req, res) => {
+router.post('/servers/:id/files/upload', requireAdmin, async (req, res) => {
   try {
     if (!req.files || Object.keys(req.files).length === 0) {
       return res.status(400).json({ message: 'No file was uploaded' });
@@ -1017,7 +1020,7 @@ router.post('/servers/:id/files/upload', isAdmin, async (req, res) => {
 // @route   DELETE /api/admin/servers/:id/files
 // @desc    Delete a file from a game server container
 // @access  Admin only
-router.delete('/servers/:id/files', isAdmin, async (req, res) => {
+router.delete('/servers/:id/files', requireAdmin, async (req, res) => {
   try {
     const { path } = req.query;
     const gameServer = await GameServer.findById(req.validatedId);
@@ -1073,7 +1076,7 @@ router.delete('/servers/:id/files', isAdmin, async (req, res) => {
 // @route   GET /api/admin/servers/:id/volumes
 // @desc    Get mounted volumes for a game server container
 // @access  Admin only
-router.get('/servers/:id/volumes', isAdmin, async (req, res) => {
+router.get('/servers/:id/volumes', requireAdmin, async (req, res) => {
   try {
     const gameServer = await GameServer.findById(req.validatedId);
     
@@ -1122,7 +1125,7 @@ router.get('/servers/:id/volumes', isAdmin, async (req, res) => {
 // @route   GET /api/admin/servers/:id/files/download
 // @desc    Download a file from a game server container
 // @access  Admin only
-router.get('/servers/:id/files/download', isAdmin, async (req, res) => {
+router.get('/servers/:id/files/download', requireAdmin, async (req, res) => {
   try {
     const { path } = req.query;
     const gameServer = await GameServer.findById(req.validatedId);

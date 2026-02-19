@@ -1,23 +1,26 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const ComposeFile = require('../models/ComposeFile');
 const GameServer = require('../models/GameServer');
 const composeValidator = require('../utils/composeValidator');
 const composeService = require('../utils/composeService');
 const dockerService = require('../utils/dockerService');
+const { requireAdmin } = require('../utils/authMiddleware');
 
-// Middleware to check if user is authenticated and an admin
-const isAdmin = (req, res, next) => {
-  if (req.isAuthenticated() && req.user.role === 'admin') {
-    return next();
-  }
-  return res.status(403).json({ message: 'Forbidden: Admin access required' });
-};
+const composeRouteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+router.use(composeRouteLimiter);
 
 // @route   GET /api/admin/compose
 // @desc    Get all compose files
 // @access  Admin only
-router.get('/', isAdmin, async (req, res) => {
+router.get('/', requireAdmin, async (req, res) => {
   try {
     const composeFiles = await ComposeFile.find()
       .sort({ updatedAt: -1 });
@@ -31,7 +34,7 @@ router.get('/', isAdmin, async (req, res) => {
 // @route   GET /api/admin/compose/:id
 // @desc    Get a single compose file
 // @access  Admin only
-router.get('/:id', isAdmin, async (req, res) => {
+router.get('/:id', requireAdmin, async (req, res) => {
   try {
     const composeFile = await ComposeFile.findById(req.params.id);
     if (!composeFile) {
@@ -52,7 +55,7 @@ router.get('/:id', isAdmin, async (req, res) => {
 // @route   POST /api/admin/compose
 // @desc    Create a new compose file
 // @access  Admin only
-router.post('/', isAdmin, async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const { name, content, templateName } = req.body;
     
@@ -109,7 +112,7 @@ router.post('/', isAdmin, async (req, res) => {
 // @route   PUT /api/admin/compose/:id
 // @desc    Update a compose file
 // @access  Admin only
-router.put('/:id', isAdmin, async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const { name, content } = req.body;
     
@@ -183,7 +186,7 @@ router.put('/:id', isAdmin, async (req, res) => {
 // @route   DELETE /api/admin/compose/:id
 // @desc    Delete a compose file
 // @access  Admin only
-router.delete('/:id', isAdmin, async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const composeFile = await ComposeFile.findById(req.params.id);
     
@@ -208,7 +211,7 @@ router.delete('/:id', isAdmin, async (req, res) => {
 // @route   POST /api/admin/compose/:id/validate
 // @desc    Validate a compose file
 // @access  Admin only
-router.post('/:id/validate', isAdmin, async (req, res) => {
+router.post('/:id/validate', requireAdmin, async (req, res) => {
   try {
     const composeFile = await ComposeFile.findById(req.params.id);
     
@@ -254,7 +257,7 @@ router.post('/:id/validate', isAdmin, async (req, res) => {
 // @route   POST /api/admin/compose/:id/deploy
 // @desc    Deploy a compose file (docker compose up -d)
 // @access  Admin only
-router.post('/:id/deploy', isAdmin, async (req, res) => {
+router.post('/:id/deploy', requireAdmin, async (req, res) => {
   try {
     const composeFile = await ComposeFile.findById(req.params.id);
     
@@ -365,7 +368,7 @@ router.post('/:id/deploy', isAdmin, async (req, res) => {
 // @route   POST /api/admin/compose/:id/undeploy
 // @desc    Undeploy a compose file (docker compose down)
 // @access  Admin only
-router.post('/:id/undeploy', isAdmin, async (req, res) => {
+router.post('/:id/undeploy', requireAdmin, async (req, res) => {
   try {
     const { removeVolumes } = req.body;
     const composeFile = await ComposeFile.findById(req.params.id);
@@ -422,7 +425,7 @@ router.post('/:id/undeploy', isAdmin, async (req, res) => {
 // @route   POST /api/admin/compose/:id/redeploy
 // @desc    Update and redeploy a compose file
 // @access  Admin only
-router.post('/:id/redeploy', isAdmin, async (req, res) => {
+router.post('/:id/redeploy', requireAdmin, async (req, res) => {
   try {
     const { content } = req.body;
     const composeFile = await ComposeFile.findById(req.params.id);
@@ -521,7 +524,7 @@ router.post('/:id/redeploy', isAdmin, async (req, res) => {
 // @route   GET /api/admin/compose/:id/logs
 // @desc    Get logs from a deployed compose container
 // @access  Admin only
-router.get('/:id/logs', isAdmin, async (req, res) => {
+router.get('/:id/logs', requireAdmin, async (req, res) => {
   try {
     const { lines = 100 } = req.query;
     const composeFile = await ComposeFile.findById(req.params.id);
@@ -563,7 +566,7 @@ router.get('/:id/logs', isAdmin, async (req, res) => {
 // @route   POST /api/admin/compose/:id/pull
 // @desc    Pull latest images for a compose file
 // @access  Admin only
-router.post('/:id/pull', isAdmin, async (req, res) => {
+router.post('/:id/pull', requireAdmin, async (req, res) => {
   try {
     const composeFile = await ComposeFile.findById(req.params.id);
     
@@ -609,7 +612,7 @@ router.post('/:id/pull', isAdmin, async (req, res) => {
 // @route   POST /api/admin/compose/validate-content
 // @desc    Validate compose content without saving
 // @access  Admin only
-router.post('/validate-content', isAdmin, async (req, res) => {
+router.post('/validate-content', requireAdmin, async (req, res) => {
   try {
     const { content } = req.body;
     

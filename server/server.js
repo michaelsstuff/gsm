@@ -7,6 +7,7 @@ const passport = require('passport');
 const path = require('path');
 const dotenv = require('dotenv');
 const fileUpload = require('express-fileupload');
+const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const backupScheduler = require('./utils/backupScheduler');
@@ -26,13 +27,12 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const isProduction = process.env.NODE_ENV === 'production';
 const jwtSecret = process.env.JWT_SECRET || 'jwt_secret';
-const rateLimitStore = new Map();
-const sessionCookieSecure =
-  process.env.SESSION_COOKIE_SECURE === 'true'
-    ? true
-    : process.env.SESSION_COOKIE_SECURE === 'false'
-      ? false
-      : 'auto';
+const apiWriteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 if (isProduction) {
   app.set('trust proxy', 1);
@@ -45,38 +45,6 @@ app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:3000',
   credentials: true
 }));
-
-const createRateLimiter = ({ windowMs, maxRequests, keyPrefix }) => {
-  return (req, res, next) => {
-    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
-    const key = `${keyPrefix}:${ip}`;
-    const now = Date.now();
-    const existing = rateLimitStore.get(key);
-
-    if (!existing || existing.resetAt <= now) {
-      rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
-      return next();
-    }
-
-    if (existing.count >= maxRequests) {
-      const retryAfter = Math.ceil((existing.resetAt - now) / 1000);
-      res.setHeader('Retry-After', retryAfter);
-      return res.status(429).json({ message: 'Too many requests. Please try again later.' });
-    }
-
-    existing.count += 1;
-    return next();
-  };
-};
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of rateLimitStore.entries()) {
-    if (value.resetAt <= now) {
-      rateLimitStore.delete(key);
-    }
-  }
-}, 60 * 1000).unref();
 
 // File Upload middleware
 app.use(fileUpload({
@@ -99,7 +67,7 @@ app.use(session({
     maxAge: 1000 * 60 * 60 * 24, // 1 day
     httpOnly: true,
     sameSite: 'lax',
-    secure: sessionCookieSecure
+    secure: true
   }
 }));
 
@@ -116,6 +84,8 @@ app.use((req, res, next) => {
 
   next();
 });
+
+app.use('/api', apiWriteLimiter);
 
 app.use('/api', (req, res, next) => {
   const isWriteMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
@@ -157,11 +127,11 @@ app.get('/api/auth/csrf-token', (req, res) => {
 });
 
 // Routes
-app.use('/api/auth', createRateLimiter({ windowMs: 15 * 60 * 1000, maxRequests: 120, keyPrefix: 'auth' }), authRoutes);
-app.use('/api/servers', createRateLimiter({ windowMs: 60 * 1000, maxRequests: 180, keyPrefix: 'servers' }), gameServerRoutes);
-app.use('/api/admin', createRateLimiter({ windowMs: 60 * 1000, maxRequests: 120, keyPrefix: 'admin' }), adminRoutes);
-app.use('/api/admin/compose', createRateLimiter({ windowMs: 60 * 1000, maxRequests: 60, keyPrefix: 'compose' }), composeRoutes);
-app.use('/api/admin/templates', createRateLimiter({ windowMs: 60 * 1000, maxRequests: 120, keyPrefix: 'templates' }), templatesRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/servers', gameServerRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/admin/compose', composeRoutes);
+app.use('/api/admin/templates', templatesRoutes);
 
 // Note: Frontend is served by a separate nginx container in Docker deployment
 // Backend only handles API routes

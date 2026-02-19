@@ -1,15 +1,18 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const fs = require('fs').promises;
 const path = require('path');
+const { requireAdmin } = require('../utils/authMiddleware');
 
-// Middleware to check if user is authenticated and an admin
-const isAdmin = (req, res, next) => {
-  if (req.isAuthenticated() && req.user.role === 'admin') {
-    return next();
-  }
-  return res.status(403).json({ message: 'Forbidden: Admin access required' });
-};
+const templatesRouteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+router.use(templatesRouteLimiter);
 
 // Templates directory
 const TEMPLATES_DIR = path.join(__dirname, '../templates');
@@ -85,7 +88,7 @@ const TEMPLATE_METADATA = {
 // @route   GET /api/admin/templates
 // @desc    Get all available templates
 // @access  Admin only
-router.get('/', isAdmin, async (req, res) => {
+router.get('/', requireAdmin, async (req, res) => {
   try {
     const files = await fs.readdir(TEMPLATES_DIR);
     const templates = [];
@@ -116,7 +119,7 @@ router.get('/', isAdmin, async (req, res) => {
 // @route   GET /api/admin/templates/:name
 // @desc    Get a specific template content
 // @access  Admin only
-router.get('/:name', isAdmin, async (req, res) => {
+router.get('/:name', requireAdmin, async (req, res) => {
   try {
     const { name } = req.params;
     

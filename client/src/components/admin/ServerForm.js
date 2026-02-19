@@ -3,6 +3,24 @@ import { Form, Button, Card, Alert, Container, Row, Col, Spinner } from 'react-b
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
+const isSteamHostedAssetUrl = (value) => {
+  if (typeof value !== 'string' || !value.trim()) {
+    return false;
+  }
+
+  try {
+    const parsedUrl = new URL(value);
+    const hostname = parsedUrl.hostname.toLowerCase();
+    return (
+      hostname === 'store.steampowered.com' ||
+      hostname === 'steamstatic.com' ||
+      hostname.endsWith('.steamstatic.com')
+    );
+  } catch (error) {
+    return false;
+  }
+};
+
 const ServerForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -134,7 +152,7 @@ const ServerForm = () => {
                       if (appId) {
                         // Detect fallback: if logoUrl contains 'steamstatic' or matches tiny_image/header_image pattern
                         let steamGridDbFailed = false;
-                        if (logoUrl && (logoUrl.includes('steamstatic.com') || logoUrl.includes('store.steampowered.com'))) {
+                        if (isSteamHostedAssetUrl(logoUrl)) {
                           steamGridDbFailed = true;
                         }
                         setFormData(f => ({
