@@ -386,14 +386,14 @@ router.post('/:id/mods/download-bulk', async (req, res) => {
       
       // Log any errors but continue with other files
       catProcess.stderr.on('data', (data) => {
-        console.error(`Error reading file ${filePath}:`, data.toString());
+        console.error('Error reading file during bulk download:', { filePath, error: data.toString() });
       });
       
       // Wait for the cat process to complete
       await new Promise((resolve) => {
         catProcess.on('close', resolve);
         catProcess.on('error', (err) => {
-          console.error(`Error spawning cat process for ${filePath}:`, err);
+          console.error('Error spawning cat process during bulk download:', { filePath, error: err });
           resolve();
         });
       });

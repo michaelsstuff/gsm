@@ -1,10 +1,21 @@
 const express = require('express');
 const router = express.Router();
+const pathLib = require('path');
+const fs = require('fs');
+const os = require('os');
+const util = require('util');
+const { execFile } = require('child_process');
+const mongoose = require('mongoose');
+const Docker = require('dockerode');
 const GameServer = require('../models/GameServer');
 const User = require('../models/User');
 const dockerService = require('../utils/dockerService');
 const backupScheduler = require('../utils/backupScheduler');
 const { searchSteamGame } = require('../utils/steamLookup');
+
+const execFilePromise = util.promisify(execFile);
+const docker = new Docker({ socketPath: '/var/run/docker.sock' });
+const CONTAINER_NAME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/;
 
 // Middleware to check if user is authenticated and an admin
 const isAdmin = (req, res, next) => {
@@ -12,6 +23,88 @@ const isAdmin = (req, res, next) => {
     return next();
   }
   return res.status(403).json({ message: 'Forbidden: Admin access required' });
+};
+
+router.param('id', (req, res, next, id) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'Invalid ID format' });
+  }
+
+  req.validatedId = new mongoose.Types.ObjectId(id);
+  return next();
+});
+
+const normalizeContainerPath = (inputPath) => {
+  const rawPath = typeof inputPath === 'string' ? inputPath : '/';
+  const normalized = pathLib.posix.normalize(rawPath);
+
+  if (normalized.includes('\0')) {
+    return null;
+  }
+
+  if (normalized.startsWith('..')) {
+    return null;
+  }
+
+  return normalized.startsWith('/') ? normalized : `/${normalized}`;
+};
+
+const getValidatedContainerName = (containerName) => {
+  const normalizedContainerName = typeof containerName === 'string' ? containerName.trim() : '';
+  return CONTAINER_NAME_REGEX.test(normalizedContainerName) ? normalizedContainerName : null;
+};
+
+const runDockerCommand = async (args, options = {}) => {
+  return execFilePromise('docker', args, {
+    maxBuffer: 10 * 1024 * 1024,
+    ...options
+  });
+};
+
+const isNotFoundExit = (error) => error && (error.code === 1 || error.code === 2);
+
+const isContainerRunning = async (containerName) => {
+  const containerStatus = await dockerService.getContainerStatus(containerName);
+  return containerStatus === 'running';
+};
+
+const dockerPathExists = async (containerName, filePath) => {
+  try {
+    await runDockerCommand(['exec', containerName, 'test', '-e', filePath]);
+    return true;
+  } catch (error) {
+    if (isNotFoundExit(error)) {
+      return false;
+    }
+
+    throw error;
+  }
+};
+
+const dockerPathIsFile = async (containerName, filePath) => {
+  try {
+    await runDockerCommand(['exec', containerName, 'test', '-f', filePath]);
+    return true;
+  } catch (error) {
+    if (isNotFoundExit(error)) {
+      return false;
+    }
+
+    throw error;
+  }
+};
+
+const dockerPathIsDirectory = async (containerName, filePath) => {
+  try {
+    await runDockerCommand(['exec', containerName, 'test', '-d', filePath]);
+    return true;
+  } catch (error) {
+    if (isNotFoundExit(error)) {
+      return false;
+    }
+
+    throw error;
+  }
 };
 
 // @route   GET /api/steam-lookup
@@ -65,14 +158,14 @@ router.put('/users/:id/role', isAdmin, async (req, res) => {
     }
     
     // Find user by ID
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.validatedId);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
     
     // Prevent admins from demoting themselves
-    if (req.user.id === req.params.id && role !== 'admin') {
+    if (String(req.user.id) === String(req.validatedId) && role !== 'admin') {
       return res.status(400).json({ message: 'You cannot demote yourself from admin role' });
     }
     
@@ -81,7 +174,7 @@ router.put('/users/:id/role', isAdmin, async (req, res) => {
     await user.save();
     
     // Return updated user without password
-    const updatedUser = await User.findById(req.params.id).select('-password');
+    const updatedUser = await User.findById(req.validatedId).select('-password');
     
     res.json({
       message: `User role updated to ${role} successfully`,
@@ -104,19 +197,19 @@ router.put('/users/:id/role', isAdmin, async (req, res) => {
 router.delete('/users/:id', isAdmin, async (req, res) => {
   try {
     // Find user by ID
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.validatedId);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
     
     // Prevent admins from deleting themselves
-    if (req.user.id === req.params.id) {
+    if (String(req.user.id) === String(req.validatedId)) {
       return res.status(400).json({ message: 'You cannot delete your own account' });
     }
     
     // Delete user
-    await User.findByIdAndDelete(req.params.id);
+    await User.findByIdAndDelete(req.validatedId);
     
     res.json({
       message: `User ${user.username} deleted successfully`
@@ -137,28 +230,34 @@ router.delete('/users/:id', isAdmin, async (req, res) => {
 // @access  Admin only
 router.post('/servers', isAdmin, async (req, res) => {
   try {
-    const {
-      name,
-      connectionString,
-      logo,
-      steamAppId,
+      const {
+        name,
+        connectionString,
+        logo,
+        steamAppId,
       websiteUrl,
       description,
-      modsDirectory,
-      containerName
-    } = req.body;
+        modsDirectory,
+        containerName
+      } = req.body;
 
-    // Check if container exists
-    const containerExists = await dockerService.containerExists(containerName);
-    if (!containerExists) {
-      return res.status(400).json({ message: 'Docker container does not exist' });
-    }
+      const normalizedContainerName = typeof containerName === 'string' ? containerName.trim() : '';
 
-    // Check if game server with this container name already exists
-    const existingServer = await GameServer.findOne({ containerName });
-    if (existingServer) {
-      return res.status(400).json({ message: 'Game server with this container name already exists' });
-    }
+      if (!CONTAINER_NAME_REGEX.test(normalizedContainerName)) {
+        return res.status(400).json({ message: 'Invalid container name format' });
+      }
+
+      // Check if container exists
+      const containerExists = await dockerService.containerExists(normalizedContainerName);
+      if (!containerExists) {
+        return res.status(400).json({ message: 'Docker container does not exist' });
+      }
+
+      // Check if game server with this container name already exists
+      const existingServer = await GameServer.findOne({ containerName: normalizedContainerName });
+      if (existingServer) {
+        return res.status(400).json({ message: 'Game server with this container name already exists' });
+      }
 
     // Create new game server
     const gameServer = new GameServer({
@@ -166,12 +265,12 @@ router.post('/servers', isAdmin, async (req, res) => {
       connectionString,
       logo,
       steamAppId,
-      websiteUrl,
-      description,
-      modsDirectory,
-      containerName,
-      status: await dockerService.getContainerStatus(containerName)
-    });
+        websiteUrl,
+        description,
+        modsDirectory,
+        containerName: normalizedContainerName,
+        status: await dockerService.getContainerStatus(normalizedContainerName)
+      });
 
     await gameServer.save();
     
@@ -190,7 +289,7 @@ router.post('/servers', isAdmin, async (req, res) => {
 // @access  Admin only
 router.get('/servers/:id', isAdmin, async (req, res) => {
   try {
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
@@ -224,7 +323,7 @@ router.put('/servers/:id', isAdmin, async (req, res) => {
     } = req.body;
 
     // Find game server
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
@@ -261,7 +360,7 @@ router.put('/servers/:id', isAdmin, async (req, res) => {
 // @access  Admin only
 router.delete('/servers/:id', isAdmin, async (req, res) => {
   try {
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
     }
@@ -301,10 +400,15 @@ router.post('/servers/:id/command', isAdmin, async (req, res) => {
       return res.status(400).json({ message: 'Invalid command' });
     }
 
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
+    }
+
+    const containerName = getValidatedContainerName(gameServer.containerName);
+    if (!containerName) {
+      return res.status(400).json({ message: 'Invalid container name format' });
     }
     
     // Handle backup command as a special case with async processing
@@ -342,13 +446,13 @@ router.post('/servers/:id/command', isAdmin, async (req, res) => {
           await gameServer.save();
           
           // Execute backup
-          const result = await dockerService.runCommand(gameServer.containerName, command);
+          const result = await dockerService.runCommand(containerName, command);
           
           // Update server and job status after successful backup
           gameServer.activeBackupJob.inProgress = false;
           gameServer.activeBackupJob.status = 'completed';
           gameServer.activeBackupJob.message = result || 'Backup completed successfully';
-          gameServer.status = await dockerService.getContainerStatus(gameServer.containerName);
+          gameServer.status = await dockerService.getContainerStatus(containerName);
           gameServer.backupSchedule.lastBackup = new Date();
           await gameServer.save();
         } catch (error) {
@@ -360,7 +464,7 @@ router.post('/servers/:id/command', isAdmin, async (req, res) => {
             gameServer.activeBackupJob.inProgress = false;
             gameServer.activeBackupJob.status = 'failed';
             gameServer.activeBackupJob.message = `Backup failed: ${errorMessage}`;
-            gameServer.status = await dockerService.getContainerStatus(gameServer.containerName);
+            gameServer.status = await dockerService.getContainerStatus(containerName);
             gameServer.backupSchedule.lastError = {
               message: errorMessage,
               date: new Date()
@@ -376,10 +480,10 @@ router.post('/servers/:id/command', isAdmin, async (req, res) => {
     }
     
     // For other commands (start, stop, restart), process synchronously
-    const result = await dockerService.runCommand(gameServer.containerName, command);
+    const result = await dockerService.runCommand(containerName, command);
 
     // Update server status after command execution
-    gameServer.status = await dockerService.getContainerStatus(gameServer.containerName);
+    gameServer.status = await dockerService.getContainerStatus(containerName);
     await gameServer.save();
 
     res.json({ 
@@ -430,20 +534,25 @@ router.get('/containers', isAdmin, async (req, res) => {
 router.get('/servers/:id/logs', isAdmin, async (req, res) => {
   try {
     const { lines } = req.query;
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
     }
+
+    const containerName = getValidatedContainerName(gameServer.containerName);
+    if (!containerName) {
+      return res.status(400).json({ message: 'Invalid container name format' });
+    }
     
     const logs = await dockerService.getContainerLogs(
-      gameServer.containerName,
+      containerName,
       lines ? parseInt(lines, 10) : 100
     );
     
     res.json({
       logs,
-      containerName: gameServer.containerName
+      containerName
     });
   } catch (error) {
     console.error('Error fetching container logs:', error);
@@ -458,7 +567,7 @@ router.put('/servers/:id/backup-schedule', isAdmin, async (req, res) => {
   try {
     const { enabled, cronExpression, retention, notifyOnBackup } = req.body;
     
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
     }
@@ -530,30 +639,30 @@ router.put('/servers/:id/backup-schedule', isAdmin, async (req, res) => {
 // @access  Admin only
 router.get('/servers/:id/backup-status', isAdmin, async (req, res) => {
   try {
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
     }
 
-    // Get list of existing backups for this server
-    const backupPath = process.env.BACKUP_PATH || '/app/backups';
-    const { stdout: backupFiles } = await require('util').promisify(require('child_process').exec)(
-      `ls -t ${backupPath}/${gameServer.containerName}-*.tar.gz 2>/dev/null || true`
-    );
+      // Get list of existing backups for this server
+      const backupPath = process.env.BACKUP_PATH || '/app/backups';
+      const backupPrefix = `${gameServer.containerName}-`;
+      const backupEntries = await fs.promises.readdir(backupPath, { withFileTypes: true }).catch(() => []);
 
-    const backups = backupFiles.trim().split('\n')
-      .filter(file => file) // Remove empty lines
-      .map(file => {
-        const match = file.match(/(\d{8}-\d{6})\.tar\.gz$/);
-        return match ? {
-          filename: file.split('/').pop(),
-          timestamp: match[1],
-          date: new Date(
-            match[1].replace(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3T$4:$5:$6Z')
-          )
-        } : null;
-      })
-      .filter(backup => backup); // Remove null entries
+      const backups = backupEntries
+        .filter((entry) => entry.isFile() && entry.name.startsWith(backupPrefix) && entry.name.endsWith('.tar.gz'))
+        .map((entry) => {
+          const match = entry.name.match(/(\d{8}-\d{6})\.tar\.gz$/);
+          return match ? {
+            filename: entry.name,
+            timestamp: match[1],
+            date: new Date(
+              match[1].replace(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3T$4:$5:$6Z')
+            )
+          } : null;
+        })
+        .sort((a, b) => b.date.getTime() - a.date.getTime())
+        .filter(backup => backup); // Remove null entries
 
     res.json({
       backupSchedule: gameServer.backupSchedule,
@@ -570,7 +679,7 @@ router.get('/servers/:id/backup-status', isAdmin, async (req, res) => {
 // @access  Admin only
 router.get('/servers/:id/backup-job', isAdmin, async (req, res) => {
   try {
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
     }
@@ -593,7 +702,7 @@ router.put('/servers/:id/discord-webhook', isAdmin, async (req, res) => {
   try {
     const { enabled, url, notifyOnStart, notifyOnStop } = req.body;
     
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
     }
@@ -638,43 +747,36 @@ router.put('/servers/:id/discord-webhook', isAdmin, async (req, res) => {
 router.get('/servers/:id/files', isAdmin, async (req, res) => {
   try {
     const { path } = req.query;
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
     }
     
     // Get directory contents using docker exec
-    const containerName = gameServer.containerName;
-    let dirPath = path || '/';
-    
-    // Normalize path to prevent directory traversal
-    dirPath = require('path').normalize(dirPath).replace(/^(\.\.[\/\\])+/, '');
+    const containerName = getValidatedContainerName(gameServer.containerName);
+    if (!containerName) {
+      return res.status(400).json({ message: 'Invalid container name format' });
+    }
+    const dirPath = normalizeContainerPath(path || '/');
+
+    if (!dirPath) {
+      return res.status(400).json({ message: 'Invalid path' });
+    }
     
     console.log(`Listing directory ${dirPath} in container ${containerName}`);
     
     try {
-      // First check if the container is running
-      const { stdout: containerStatus } = await require('util').promisify(require('child_process').exec)(
-        `docker container inspect -f '{{.State.Status}}' ${containerName}`
-      );
-      
-      if (containerStatus.trim() !== 'running') {
+      if (!await isContainerRunning(containerName)) {
         return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
       }
       
-      // Get directory listing with a simplified approach using find
-      const { stdout, stderr } = await require('util').promisify(require('child_process').exec)(
-        `docker exec ${containerName} /bin/sh -c "cd '${dirPath}' && ls -la | grep -v '^total'"`
-      );
-      
-      if (stderr && !stderr.includes('No such file or directory')) {
-        console.error('Error listing directory:', stderr);
-        return res.status(500).json({ message: 'Failed to list directory contents: ' + stderr });
-      }
+      const { stdout } = await runDockerCommand(['exec', containerName, 'ls', '-la', '--', dirPath]);
       
       // Parse ls output to get file listing
-      const lines = stdout.split('\n').filter(line => line.trim() !== '');
+      const lines = stdout
+        .split('\n')
+        .filter(line => line.trim() !== '' && !line.startsWith('total'));
       const files = [];
       
       for (const line of lines) {
@@ -696,7 +798,7 @@ router.get('/servers/:id/files', isAdmin, async (req, res) => {
             isDirectory,
             permissions,
             size,
-            path: require('path').join(dirPath, name)
+            path: pathLib.posix.join(dirPath, name)
           });
         } catch (err) {
           console.error('Error parsing file entry:', err, line);
@@ -724,7 +826,7 @@ router.get('/servers/:id/files', isAdmin, async (req, res) => {
 router.get('/servers/:id/files/content', isAdmin, async (req, res) => {
   try {
     const { path } = req.query;
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
@@ -734,41 +836,29 @@ router.get('/servers/:id/files/content', isAdmin, async (req, res) => {
       return res.status(400).json({ message: 'File path is required' });
     }
     
-    // Normalize path to prevent directory traversal
-    const filePath = require('path').normalize(path).replace(/^(\.\.[\/\\])+/, '');
-    const containerName = gameServer.containerName;
+    const filePath = normalizeContainerPath(path);
+    if (!filePath) {
+      return res.status(400).json({ message: 'Invalid file path' });
+    }
+    const containerName = getValidatedContainerName(gameServer.containerName);
+    if (!containerName) {
+      return res.status(400).json({ message: 'Invalid container name format' });
+    }
     
     console.log(`Getting file content for ${filePath} in container ${containerName}`);
     
     try {
-      // First check if the container is running
-      const { stdout: containerStatus } = await require('util').promisify(require('child_process').exec)(
-        `docker container inspect -f '{{.State.Status}}' ${containerName}`
-      );
-      
-      if (containerStatus.trim() !== 'running') {
+      if (!await isContainerRunning(containerName)) {
         return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
       }
       
       // Check if file exists and is not a directory
-      const { stdout: fileType, stderr: fileTypeErr } = await require('util').promisify(require('child_process').exec)(
-        `docker exec ${containerName} /bin/sh -c "[ -f '${filePath}' ] && echo 'file' || echo 'not-file'"`
-      );
-      
-      if (fileType.trim() !== 'file') {
-        console.error('File type check error:', fileTypeErr);
+      if (!await dockerPathIsFile(containerName, filePath)) {
         return res.status(400).json({ message: 'Not a file or file does not exist' });
       }
       
       // Get file content
-      const { stdout, stderr } = await require('util').promisify(require('child_process').exec)(
-        `docker exec ${containerName} cat "${filePath}"`
-      );
-      
-      if (stderr) {
-        console.error('Error reading file:', stderr);
-        return res.status(500).json({ message: 'Failed to read file content: ' + stderr });
-      }
+      const { stdout } = await runDockerCommand(['exec', containerName, 'cat', '--', filePath]);
       
       res.json({
         path: filePath,
@@ -791,7 +881,7 @@ router.get('/servers/:id/files/content', isAdmin, async (req, res) => {
 router.post('/servers/:id/files/save', isAdmin, async (req, res) => {
   try {
     const { path, content } = req.body;
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
@@ -805,34 +895,31 @@ router.post('/servers/:id/files/save', isAdmin, async (req, res) => {
       return res.status(400).json({ message: 'File content is required' });
     }
     
-    // Normalize path to prevent directory traversal
-    const filePath = require('path').normalize(path).replace(/^(\.\.[\/\\])+/, '');
-    const containerName = gameServer.containerName;
+    const filePath = normalizeContainerPath(path);
+    if (!filePath) {
+      return res.status(400).json({ message: 'Invalid file path' });
+    }
+    const containerName = getValidatedContainerName(gameServer.containerName);
+    if (!containerName) {
+      return res.status(400).json({ message: 'Invalid container name format' });
+    }
     
     console.log(`Saving file content to ${filePath} in container ${containerName}`);
     
     try {
-      // First check if the container is running
-      const { stdout: containerStatus } = await require('util').promisify(require('child_process').exec)(
-        `docker container inspect -f '{{.State.Status}}' ${containerName}`
-      );
-      
-      if (containerStatus.trim() !== 'running') {
+      if (!await isContainerRunning(containerName)) {
         return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
       }
       
       // Create a temporary file and copy it to the container
-      const tempFile = `/tmp/gsm-file-edit-${Date.now()}`;
-      await require('fs').promises.writeFile(tempFile, content);
+      const tempFile = pathLib.join(os.tmpdir(), `gsm-file-edit-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      await fs.promises.writeFile(tempFile, content);
       
       try {
-        // Properly quote the source and destination paths to handle spaces in filenames
-        await require('util').promisify(require('child_process').exec)(
-          `docker cp "${tempFile}" "${containerName}:${filePath}"`
-        );
+        await runDockerCommand(['cp', tempFile, `${containerName}:${filePath}`]);
         
         // Clean up temp file
-        await require('fs').promises.unlink(tempFile);
+        await fs.promises.unlink(tempFile);
         
         res.json({
           message: 'File saved successfully',
@@ -842,7 +929,7 @@ router.post('/servers/:id/files/save', isAdmin, async (req, res) => {
         console.error('Error saving file:', err);
         // Clean up temp file
         try {
-          await require('fs').promises.unlink(tempFile);
+          await fs.promises.unlink(tempFile);
         } catch (unlinkErr) {
           console.error('Error removing temp file:', unlinkErr);
         }
@@ -869,7 +956,7 @@ router.post('/servers/:id/files/upload', isAdmin, async (req, res) => {
       return res.status(400).json({ message: 'No file was uploaded' });
     }
 
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
     }
@@ -882,34 +969,33 @@ router.post('/servers/:id/files/upload', isAdmin, async (req, res) => {
       return res.status(400).json({ message: 'Upload path is required' });
     }
 
-    // Normalize path to prevent directory traversal
-    const containerPath = require('path').normalize(uploadPath).replace(/^(\.\.[\/\\])+/, '');
-    const containerName = gameServer.containerName;
-    const filePath = require('path').join(containerPath, uploadedFile.name);
+      // Normalize path to prevent directory traversal
+      const containerPath = normalizeContainerPath(uploadPath);
+      if (!containerPath) {
+        return res.status(400).json({ message: 'Invalid upload path' });
+      }
+      const containerName = getValidatedContainerName(gameServer.containerName);
+      if (!containerName) {
+        return res.status(400).json({ message: 'Invalid container name format' });
+      }
+      const filePath = pathLib.posix.join(containerPath, uploadedFile.name);
     
     console.log(`Uploading file ${uploadedFile.name} to ${filePath} in container ${containerName}`);
 
+    let tempFile;
     try {
-      // First check if the container is running
-      const { stdout: containerStatus } = await require('util').promisify(require('child_process').exec)(
-        `docker container inspect -f '{{.State.Status}}' ${containerName}`
-      );
-      
-      if (containerStatus.trim() !== 'running') {
+      if (!await isContainerRunning(containerName)) {
         return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
       }
       
       // Create a temporary file
-      const tempFile = `/tmp/gsm-file-upload-${Date.now()}`;
+      tempFile = pathLib.join(os.tmpdir(), `gsm-file-upload-${Date.now()}-${Math.random().toString(36).slice(2)}`);
       await uploadedFile.mv(tempFile);
-      
-      // Copy the temp file to the container - properly quote the destination to handle spaces in filenames
-      await require('util').promisify(require('child_process').exec)(
-        `docker cp "${tempFile}" "${containerName}:${filePath}"`
-      );
-      
-      // Clean up temp file
-      await require('fs').promises.unlink(tempFile);
+        
+        await runDockerCommand(['cp', tempFile, `${containerName}:${filePath}`]);
+        
+        // Clean up temp file
+        await fs.promises.unlink(tempFile);
       
       res.json({
         message: 'File uploaded successfully',
@@ -917,6 +1003,9 @@ router.post('/servers/:id/files/upload', isAdmin, async (req, res) => {
       });
     } catch (err) {
       console.error('Error uploading file:', err);
+      if (tempFile) {
+        await fs.promises.unlink(tempFile).catch(() => {});
+      }
       return res.status(500).json({ message: 'Failed to upload file: ' + (err.stderr || err.message) });
     }
   } catch (error) {
@@ -931,61 +1020,46 @@ router.post('/servers/:id/files/upload', isAdmin, async (req, res) => {
 router.delete('/servers/:id/files', isAdmin, async (req, res) => {
   try {
     const { path } = req.query;
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
     }
     
-    if (!path) {
-      return res.status(400).json({ message: 'File path is required' });
-    }
-    
-    // Normalize path to prevent directory traversal
-    const filePath = require('path').normalize(path).replace(/^(\.\.[\/\\])+/, '');
-    const containerName = gameServer.containerName;
+      if (!path) {
+        return res.status(400).json({ message: 'File path is required' });
+      }
+      
+      const filePath = normalizeContainerPath(path);
+      if (!filePath) {
+        return res.status(400).json({ message: 'Invalid file path' });
+      }
+      const containerName = getValidatedContainerName(gameServer.containerName);
+      if (!containerName) {
+        return res.status(400).json({ message: 'Invalid container name format' });
+      }
     
     console.log(`Deleting file ${filePath} in container ${containerName}`);
     
-    try {
-      // First check if the container is running
-      const { stdout: containerStatus } = await require('util').promisify(require('child_process').exec)(
-        `docker container inspect -f '{{.State.Status}}' ${containerName}`
-      );
-      
-      if (containerStatus.trim() !== 'running') {
-        return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
-      }
-      
-      // Check if file exists
-      const { stdout: fileExists, stderr: fileExistsErr } = await require('util').promisify(require('child_process').exec)(
-        `docker exec ${containerName} /bin/sh -c "[ -e '${filePath}' ] && echo 'exists' || echo 'not-exists'"`
-      );
-      
-      if (fileExists.trim() !== 'exists') {
-        return res.status(400).json({ message: 'File does not exist' });
-      }
-      
-      // Check if it's a directory
-      const { stdout: isDir } = await require('util').promisify(require('child_process').exec)(
-        `docker exec ${containerName} /bin/sh -c "[ -d '${filePath}' ] && echo 'directory' || echo 'file'"`
-      );
-      
-      // Delete the file or directory
-      if (isDir.trim() === 'directory') {
-        await require('util').promisify(require('child_process').exec)(
-          `docker exec ${containerName} /bin/sh -c "rm -rf '${filePath}'"`
-        );
-      } else {
-        await require('util').promisify(require('child_process').exec)(
-          `docker exec ${containerName} /bin/sh -c "rm '${filePath}'"`
-        );
-      }
-      
-      res.json({
-        message: `${isDir.trim() === 'directory' ? 'Directory' : 'File'} deleted successfully`,
-        path: filePath
-      });
+      try {
+        if (!await isContainerRunning(containerName)) {
+          return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
+        }
+        
+        if (!await dockerPathExists(containerName, filePath)) {
+          return res.status(400).json({ message: 'File does not exist' });
+        }
+        
+        // Check if it's a directory
+        const isDirectory = await dockerPathIsDirectory(containerName, filePath);
+        
+        // Delete the file or directory
+        await runDockerCommand(['exec', containerName, 'rm', '-rf', '--', filePath]);
+        
+        res.json({
+          message: `${isDirectory ? 'Directory' : 'File'} deleted successfully`,
+          path: filePath
+        });
     } catch (err) {
       console.error('Error deleting file:', err);
       return res.status(500).json({ message: 'Failed to delete file: ' + (err.stderr || err.message) });
@@ -1001,31 +1075,25 @@ router.delete('/servers/:id/files', isAdmin, async (req, res) => {
 // @access  Admin only
 router.get('/servers/:id/volumes', isAdmin, async (req, res) => {
   try {
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
     }
     
-    const containerName = gameServer.containerName;
-    
-    try {
-      // First check if the container is running
-      const { stdout: containerStatus } = await require('util').promisify(require('child_process').exec)(
-        `docker container inspect -f '{{.State.Status}}' ${containerName}`
-      );
-      
-      if (containerStatus.trim() !== 'running') {
-        return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
+      const containerName = getValidatedContainerName(gameServer.containerName);
+      if (!containerName) {
+        return res.status(400).json({ message: 'Invalid container name format' });
       }
       
-      // Get the container's mount points
-      const { stdout } = await require('util').promisify(require('child_process').exec)(
-        `docker inspect --format '{{json .Mounts}}' ${containerName}`
-      );
-      
-      // Parse the JSON output
-      let mounts = JSON.parse(stdout);
+      try {
+        if (!await isContainerRunning(containerName)) {
+          return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
+        }
+        
+        const container = docker.getContainer(containerName);
+        const inspection = await container.inspect();
+        const mounts = inspection.Mounts || [];
       
       // Filter and format the mounts
       const volumes = mounts.map(mount => ({
@@ -1057,79 +1125,70 @@ router.get('/servers/:id/volumes', isAdmin, async (req, res) => {
 router.get('/servers/:id/files/download', isAdmin, async (req, res) => {
   try {
     const { path } = req.query;
-    const gameServer = await GameServer.findById(req.params.id);
+    const gameServer = await GameServer.findById(req.validatedId);
     
     if (!gameServer) {
       return res.status(404).json({ message: 'Game server not found' });
     }
     
-    if (!path) {
-      return res.status(400).json({ message: 'File path is required' });
-    }
-    
-    // Normalize path to prevent directory traversal
-    const filePath = require('path').normalize(path).replace(/^(\.\.[\/\\])+/, '');
-    const containerName = gameServer.containerName;
+      if (!path) {
+        return res.status(400).json({ message: 'File path is required' });
+      }
+      
+      const filePath = normalizeContainerPath(path);
+      if (!filePath) {
+        return res.status(400).json({ message: 'Invalid file path' });
+      }
+      const containerName = getValidatedContainerName(gameServer.containerName);
+      if (!containerName) {
+        return res.status(400).json({ message: 'Invalid container name format' });
+      }
     
     console.log(`Downloading file ${filePath} from container ${containerName}`);
     
-    try {
-      // First check if the container is running
-      const { stdout: containerStatus } = await require('util').promisify(require('child_process').exec)(
-        `docker container inspect -f '{{.State.Status}}' ${containerName}`
-      );
-      
-      if (containerStatus.trim() !== 'running') {
-        return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
-      }
-      
-      // Check if file exists and is not a directory
-      const { stdout: fileType, stderr: fileTypeErr } = await require('util').promisify(require('child_process').exec)(
-        `docker exec ${containerName} /bin/sh -c "[ -f '${filePath}' ] && echo 'file' || echo 'not-file'"`
-      );
-      
-      if (fileType.trim() !== 'file') {
-        console.error('File type check error:', fileTypeErr);
-        return res.status(400).json({ message: 'Not a file or file does not exist' });
-      }
-      
-      // Create a temporary directory for the download
-      const tempDir = `/tmp/gsm-downloads-${Date.now()}`;
-      const tempFilePath = `${tempDir}/download`;
-      await require('util').promisify(require('child_process').exec)(`mkdir -p ${tempDir}`);
-      
       try {
-        // Copy the file from the container to the temporary directory
-        await require('util').promisify(require('child_process').exec)(
-          `docker cp "${containerName}:${filePath}" "${tempFilePath}"`
-        );
+        if (!await isContainerRunning(containerName)) {
+          return res.status(400).json({ message: 'Container is not running. Please start the server first.' });
+        }
         
-        // Get the filename from the path
-        const fileName = filePath.split('/').pop();
+        if (!await dockerPathIsFile(containerName, filePath)) {
+          return res.status(400).json({ message: 'Not a file or file does not exist' });
+        }
+        
+        // Create a temporary directory for the download
+        const tempDir = await fs.promises.mkdtemp(pathLib.join(os.tmpdir(), 'gsm-downloads-'));
+        const tempFilePath = pathLib.join(tempDir, 'download');
+        
+        try {
+          // Copy the file from the container to the temporary directory
+          await runDockerCommand(['cp', `${containerName}:${filePath}`, tempFilePath]);
+          
+          // Get the filename from the path
+          const fileName = filePath.split('/').pop();
         
         // Set headers for file download
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-        res.setHeader('Content-Type', 'application/octet-stream');
-        
-        // Stream the file as the response
-        const fileStream = require('fs').createReadStream(tempFilePath);
-        fileStream.pipe(res);
-        
-        // Clean up the temporary directory after the file has been sent
-        fileStream.on('end', async () => {
+          res.setHeader('Content-Type', 'application/octet-stream');
+          
+          // Stream the file as the response
+          const fileStream = fs.createReadStream(tempFilePath);
+          fileStream.pipe(res);
+          
+          // Clean up the temporary directory after the file has been sent
+          fileStream.on('end', async () => {
+            try {
+              await fs.promises.rm(tempDir, { recursive: true, force: true });
+            } catch (cleanupErr) {
+              console.error('Error cleaning up temporary directory:', cleanupErr);
+            }
+          });
+        } catch (err) {
+          // Clean up on error
           try {
-            await require('util').promisify(require('child_process').exec)(`rm -rf ${tempDir}`);
+            await fs.promises.rm(tempDir, { recursive: true, force: true });
           } catch (cleanupErr) {
             console.error('Error cleaning up temporary directory:', cleanupErr);
           }
-        });
-      } catch (err) {
-        // Clean up on error
-        try {
-          await require('util').promisify(require('child_process').exec)(`rm -rf ${tempDir}`);
-        } catch (cleanupErr) {
-          console.error('Error cleaning up temporary directory:', cleanupErr);
-        }
         
         console.error('Error downloading file:', err);
         return res.status(500).json({ message: 'Failed to download file: ' + (err.stderr || err.message) });

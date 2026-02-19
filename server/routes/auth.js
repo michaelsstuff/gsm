@@ -2,8 +2,12 @@ const express = require('express');
 const router = express.Router();
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const passwordSecurity = require('../utils/passwordSecurity');
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const normalizeInputString = (value) => (typeof value === 'string' ? value.trim() : '');
 
 // Middleware to check if user is authenticated
 const isAuthenticated = (req, res, next) => {
@@ -26,10 +30,25 @@ const isAdmin = (req, res, next) => {
 // @access  Public
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const username = normalizeInputString(req.body.username);
+    const email = normalizeInputString(req.body.email).toLowerCase();
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'Username, email, and password are required' });
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
     
     // Check if user already exists
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    const existingUser = await User.findOne({
+      $or: [
+        { email: { $eq: email } },
+        { username: { $eq: username } }
+      ]
+    });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
@@ -90,6 +109,16 @@ router.post('/register', async (req, res) => {
 // @desc    Login user
 // @access  Public
 router.post('/login', (req, res, next) => {
+  const username = normalizeInputString(req.body?.username);
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
+  if (!username || !password) {
+    return res.status(400).json({ message: 'Username and password are required' });
+  }
+
+  req.body.username = username;
+  req.body.password = password;
+
   passport.authenticate('local', (err, user, info) => {
     if (err) {
       return res.status(500).json({ message: 'Authentication error' });
@@ -158,6 +187,12 @@ router.put('/profile', isAuthenticated, async (req, res) => {
   try {
     const { email, currentPassword, newPassword } = req.body;
     const userId = req.user._id;
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+    const validatedUserId = new mongoose.Types.ObjectId(userId);
 
     // Find the user
     const user = await User.findById(userId);
@@ -191,13 +226,20 @@ router.put('/profile', isAuthenticated, async (req, res) => {
     }
 
     // Update email if provided
-    if (email && email !== user.email) {
+    if (normalizedEmail && normalizedEmail !== user.email) {
+      if (!EMAIL_REGEX.test(normalizedEmail)) {
+        return res.status(400).json({ message: 'Invalid email format' });
+      }
+
       // Check if email is already taken by another user
-      const existingUser = await User.findOne({ email, _id: { $ne: userId } });
+      const existingUser = await User.findOne({
+        email: { $eq: normalizedEmail },
+        _id: { $ne: validatedUserId }
+      });
       if (existingUser) {
         return res.status(400).json({ message: 'Email is already in use by another account' });
       }
-      user.email = email;
+      user.email = normalizedEmail;
     }
 
     await user.save();

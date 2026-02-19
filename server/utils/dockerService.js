@@ -1,10 +1,20 @@
 const Docker = require('dockerode');
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const util = require('util');
-const execPromise = util.promisify(exec);
+const execFilePromise = util.promisify(execFile);
 const GameServer = require('../models/GameServer');
 const discordWebhook = require('./discordWebhook');
+const CONTAINER_NAME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/;
+
+const normalizeContainerName = (containerName) => {
+  const normalizedContainerName = typeof containerName === 'string' ? containerName.trim() : '';
+  return CONTAINER_NAME_REGEX.test(normalizedContainerName) ? normalizedContainerName : null;
+};
+
+const runDockerCommand = async (args) => {
+  return execFilePromise('docker', args, { maxBuffer: 10 * 1024 * 1024 });
+};
 
 /**
  * Docker service to interact with Docker containers
@@ -75,23 +85,27 @@ const dockerService = {
    */
   async runCommand(containerName, command, options = {}) {
     try {
+      const safeContainerName = normalizeContainerName(containerName);
+      if (!safeContainerName) {
+        throw new Error('Invalid container name');
+      }
+
       // Get server information for notifications
-      const server = await GameServer.findOne({ containerName });
+      const server = await GameServer.findOne({ containerName: safeContainerName });
       
       // Handle standard docker commands directly
       if (['start', 'stop', 'restart'].includes(command)) {
-        const dockerCommand = `docker ${command} ${containerName}`;
-        const { stdout, stderr } = await execPromise(dockerCommand);
+        const { stdout, stderr } = await runDockerCommand([command, safeContainerName]);
         
         if (stderr && !stderr.includes('Container is already')) {
-          console.warn(`Command warning for ${containerName}:`, stderr);
+          console.warn(`Command warning for ${safeContainerName}:`, stderr);
         }
         
         // Send Discord notification if server exists in db and not triggered by backup
         // or if backup notifications are enabled
         if (server && (!options.isBackupOperation || server.backupSchedule?.notifyOnBackup !== false)) {
           // Get updated status after command execution
-          const newStatus = await this.getContainerStatus(containerName);
+          const newStatus = await this.getContainerStatus(safeContainerName);
           
           // Send Discord webhook notification
           await discordWebhook.sendNotification(server, command, newStatus);
@@ -103,13 +117,13 @@ const dockerService = {
       else if (command === 'backup') {
         try {
           // Get server configuration for retention setting
-          const server = await GameServer.findOne({ containerName });
+          const server = await GameServer.findOne({ containerName: safeContainerName });
           const retention = server?.backupSchedule?.retention || 5;
           const shouldNotifyOnBackup = server?.backupSchedule?.notifyOnBackup !== false;
 
           // Stop the container first
-          console.log(`Stopping container ${containerName} before backup...`);
-          await this.stopContainer(containerName);
+          console.log(`Stopping container ${safeContainerName} before backup...`);
+          await this.stopContainer(safeContainerName);
           
           // Only notify about server stop for backup if backup notifications are enabled
           if (server && shouldNotifyOnBackup) {
@@ -118,16 +132,18 @@ const dockerService = {
 
           // Execute backup using the internal script with retention setting
           const backupScript = '/app/scripts/backup_container.sh';
-          console.log(`Executing backup script for ${containerName}...`);
-          const { stdout, stderr } = await execPromise(`${backupScript} ${containerName} ${retention}`);
+          console.log(`Executing backup script for ${safeContainerName}...`);
+          const { stdout, stderr } = await execFilePromise(backupScript, [safeContainerName, String(retention)], {
+            maxBuffer: 10 * 1024 * 1024
+          });
           
           if (stderr) {
-            console.warn(`Backup warning for ${containerName}:`, stderr);
+            console.warn(`Backup warning for ${safeContainerName}:`, stderr);
           }
 
           // Start the container again regardless of backup result
-          console.log(`Starting container ${containerName} after backup...`);
-          await this.startContainer(containerName);
+          console.log(`Starting container ${safeContainerName} after backup...`);
+          await this.startContainer(safeContainerName);
           
           // Only notify about backup completion and server restart if backup notifications are enabled
           if (server && shouldNotifyOnBackup) {
@@ -135,11 +151,11 @@ const dockerService = {
             await discordWebhook.sendNotification(server, 'start', 'running');
           }
           
-          return stdout || `Backup completed successfully for container ${containerName}`;
+          return stdout || `Backup completed successfully for container ${safeContainerName}`;
         } catch (error) {
           // Make sure to start the container even if backup failed
-          console.log(`Ensuring container ${containerName} is started after error...`);
-          await this.startContainer(containerName);
+          console.log(`Ensuring container ${safeContainerName} is started after error...`);
+          await this.startContainer(safeContainerName);
 
           console.error('Backup script error:', error);
           
@@ -151,17 +167,7 @@ const dockerService = {
           throw new Error(errorMessage);
         }
       }
-      // For other custom commands, run inside the container
-      else {
-        const dockerCommand = `docker exec ${containerName} /bin/sh -c "${command}"`;
-        const { stdout, stderr } = await execPromise(dockerCommand);
-        
-        if (stderr) {
-          console.warn(`Command warning for ${containerName}:`, stderr);
-        }
-        
-        return stdout || 'Command executed successfully';
-      }
+      throw new Error('Unsupported command');
     } catch (error) {
       console.error(`Error running command on container ${containerName}:`, error);
       throw error; // Pass the original error with all its properties
@@ -256,9 +262,16 @@ const dockerService = {
    */
   async getContainerLogs(containerName, lines = 100) {
     try {
+      const safeContainerName = normalizeContainerName(containerName);
+      if (!safeContainerName) {
+        throw new Error('Invalid container name');
+      }
+
+      const parsedLines = Number.parseInt(lines, 10);
+      const safeLines = Number.isInteger(parsedLines) && parsedLines > 0 ? parsedLines : 100;
+
       // Using docker logs command as it's more flexible than the dockerode API
-      const logCommand = `docker logs --tail ${lines} ${containerName}`;
-      const { stdout, stderr } = await execPromise(logCommand);
+      const { stdout, stderr } = await runDockerCommand(['logs', '--tail', String(safeLines), safeContainerName]);
       
       // For container logs, stderr is part of the output (docker outputs to stderr)
       return stdout + stderr;
