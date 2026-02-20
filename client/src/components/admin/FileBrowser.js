@@ -578,9 +578,8 @@ const FileBrowser = () => {
                 >
                   {index === 0 ? (
                     <>
-                      <FontAwesomeIcon icon={faHdd} /> <span style={{color: "white"}}>
-                        {crumb.name}
-                      </span>
+                      <FontAwesomeIcon icon={faHdd} className="me-1 volume-breadcrumb-icon" />
+                      <span>{crumb.name}</span>
                     </>
                   ) : (
                     crumb.name
@@ -611,9 +610,7 @@ const FileBrowser = () => {
             </div>
           ) : inVolumesView ? (
             <>
-              <h5 className="mb-3 volume-heading" style={{color: "white !important", fontWeight: "bold"}}>
-                <span style={{color: "white"}}>Mounted Volumes</span>
-              </h5>
+              <h5 className="mb-3 volume-heading fw-bold">Mounted Volumes</h5>
               {volumes.length === 0 ? (
                 <div className="text-center p-4">
                   <p className="text-muted">No volumes mounted to this container.</p>

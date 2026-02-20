@@ -504,6 +504,10 @@ body.dark-mode .volume-info {
   color: #e0e0e0 !important;
 }
 
+body.dark-mode .volume-breadcrumb-icon {
+  color: var(--text-color) !important;
+}
+
 /* Button styles for dark mode */
 /* Standard buttons */
 body.dark-mode .btn {
