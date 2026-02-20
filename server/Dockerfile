@@ -1,5 +1,8 @@
 FROM node:24-alpine
 
+ARG GSM_VERSION=dev
+ENV GSM_VERSION=$GSM_VERSION
+
 # Install Docker CLI, Docker Compose, and shell utilities to interact with the host Docker socket
 RUN apk add --no-cache \
     docker \

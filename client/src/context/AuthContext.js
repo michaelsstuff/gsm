@@ -7,6 +7,7 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [gsmVersion, setGsmVersion] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,10 +26,12 @@ export const AuthProvider = ({ children }) => {
           
           if (res.data.user) {
             setUser(res.data.user);
+            setGsmVersion(res.data.gsmVersion || res.data.tgsmVersion || null);
             setIsAuthenticated(true);
           } else {
             localStorage.removeItem('token');
             delete axios.defaults.headers.common['Authorization'];
+            setGsmVersion(null);
           }
         }
         
@@ -54,6 +57,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('token', res.data.token);
         axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
         setUser(res.data.user);
+        setGsmVersion(res.data.gsmVersion || res.data.tgsmVersion || null);
         setIsAuthenticated(true);
       }
 
@@ -74,6 +78,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('token', res.data.token);
         axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
         setUser(res.data.user);
+        setGsmVersion(res.data.gsmVersion || res.data.tgsmVersion || null);
         setIsAuthenticated(true);
       }
 
@@ -94,6 +99,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('token');
       delete axios.defaults.headers.common['Authorization'];
       setUser(null);
+      setGsmVersion(null);
       setIsAuthenticated(false);
     }
   };
@@ -124,6 +130,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
+        gsmVersion,
         isAuthenticated,
         loading,
         error,

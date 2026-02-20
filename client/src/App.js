@@ -47,6 +47,8 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const App = () => {
+  const { isAuthenticated, gsmVersion } = useAuth();
+
   return (
     <Router>
       <div className="app">
@@ -148,6 +150,12 @@ const App = () => {
               >
                 Apache License 2.0
               </a>
+              {isAuthenticated && gsmVersion && (
+                <>
+                  {' · '}
+                  GSM Version: {gsmVersion}
+                </>
+              )}
             </span>
           </div>
         </footer>

@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
 const passwordSecurity = require('../utils/passwordSecurity');
 const { requireAuthenticated } = require('../utils/authMiddleware');
+const gsmVersion = process.env.GSM_VERSION || process.env.TGSM_VERSION || 'dev';
 
 const normalizeInputString = (value) => (typeof value === 'string' ? value.trim() : '');
 const authRouteLimiter = rateLimit({
@@ -140,6 +141,7 @@ router.post('/register', credentialLimiter, async (req, res) => {
           email: user.email,
           role: user.role
         },
+        gsmVersion,
         token
       });
     });
@@ -192,6 +194,7 @@ router.post('/login', credentialLimiter, (req, res, next) => {
           email: user.email,
           role: user.role
         },
+        gsmVersion,
         token
       });
     });
@@ -220,7 +223,8 @@ router.get('/current', requireAuthenticated, (req, res) => {
       username: req.user.username,
       email: req.user.email,
       role: req.user.role
-    }
+    },
+    gsmVersion
   });
 });
 

@@ -62,6 +62,8 @@ jobs:
         with:
           context: ${{ matrix.service.context }}
           file: ${{ matrix.service.dockerfile }}
+          build-args: |
+            GSM_VERSION=${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
