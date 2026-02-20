@@ -508,6 +508,48 @@ body.dark-mode .volume-breadcrumb-icon {
   color: var(--text-color) !important;
 }
 
+/* File browser breadcrumb styles */
+.file-browser-breadcrumb .breadcrumb-item > button.file-browser-breadcrumb-link {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--bs-link-color);
+  font: inherit;
+  line-height: inherit;
+  margin: 0;
+  padding: 0;
+  text-decoration: none;
+}
+
+.file-browser-breadcrumb .breadcrumb-item > button.file-browser-breadcrumb-link:hover {
+  color: var(--bs-link-hover-color);
+  text-decoration: underline;
+}
+
+.file-browser-breadcrumb .breadcrumb-item > button.file-browser-breadcrumb-link:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+}
+
+body.dark-mode .file-browser-breadcrumb .breadcrumb-item > button.file-browser-breadcrumb-link {
+  color: var(--text-color) !important;
+}
+
+body.dark-mode .file-browser-breadcrumb .breadcrumb-item > button.file-browser-breadcrumb-link:hover {
+  color: var(--text-color) !important;
+  opacity: 0.85;
+}
+
+body.dark-mode .file-browser-breadcrumb .breadcrumb-item.active {
+  color: var(--text-color) !important;
+}
+
+body.dark-mode .file-browser-breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+  color: var(--text-color) !important;
+  opacity: 0.7;
+}
+
 /* Button styles for dark mode */
 /* Standard buttons */
 body.dark-mode .btn {

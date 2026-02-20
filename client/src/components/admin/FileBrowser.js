@@ -567,14 +567,14 @@ const FileBrowser = () => {
       <Card className="mb-4">
         <Card.Header>
           <div className="d-flex justify-content-between align-items-center">
-            <Breadcrumb>
+            <Breadcrumb className="mb-0 file-browser-breadcrumb">
               {breadcrumbs.map((crumb, index) => (
                 <Breadcrumb.Item 
                   key={index}
                   active={index === breadcrumbs.length - 1}
                   onClick={() => handleBreadcrumbClick(crumb)}
                   linkAs="button"
-                  className="text-decoration-none border-0 bg-transparent p-0"
+                  linkProps={{ className: 'file-browser-breadcrumb-link' }}
                 >
                   {index === 0 ? (
                     <>
