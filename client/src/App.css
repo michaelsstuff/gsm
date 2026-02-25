@@ -550,6 +550,30 @@ body.dark-mode .file-browser-breadcrumb .breadcrumb-item + .breadcrumb-item::bef
   opacity: 0.7;
 }
 
+/* File editor modal controls */
+.file-editor-modal {
+  max-width: min(95vw, 1400px);
+}
+
+.file-editor-modal .modal-content {
+  min-height: 420px;
+  min-width: 640px;
+  overflow: auto;
+  resize: both;
+}
+
+@media (max-width: 768px) {
+  .file-editor-modal {
+    max-width: 100vw;
+    margin: 0;
+  }
+
+  .file-editor-modal .modal-content {
+    min-width: 0;
+    resize: none;
+  }
+}
+
 /* Button styles for dark mode */
 /* Standard buttons */
 body.dark-mode .btn {

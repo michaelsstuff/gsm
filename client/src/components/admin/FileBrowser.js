@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   Container, Row, Col, Card, Button, Alert, 
-  Breadcrumb, ListGroup, Spinner, Modal, Form, ProgressBar
+  Breadcrumb, ListGroup, Spinner, Modal, Form, ProgressBar, InputGroup
 } from 'react-bootstrap';
 import axios from 'axios';
 import AceEditor from 'react-ace';
@@ -31,6 +31,10 @@ import 'ace-builds/src-noconflict/theme-monokai';
 import 'ace-builds/src-noconflict/theme-github';
 import 'ace-builds/src-noconflict/ext-language_tools';
 
+const DEFAULT_EDITOR_HEIGHT = 500;
+const MIN_EDITOR_HEIGHT = 300;
+const MAX_EDITOR_HEIGHT = 900;
+
 const FileBrowser = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -54,8 +58,13 @@ const FileBrowser = () => {
   const [fileContent, setFileContent] = useState('');
   const [editorMode, setEditorMode] = useState('text');
   const [editorTheme, setEditorTheme] = useState('monokai');
+  const [editorHeight, setEditorHeight] = useState(DEFAULT_EDITOR_HEIGHT);
+  const [editorSearchTerm, setEditorSearchTerm] = useState('');
+  const [isCaseSensitiveSearch, setIsCaseSensitiveSearch] = useState(false);
+  const [editorSearchFeedback, setEditorSearchFeedback] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const editorRef = useRef(null);
 
   // File upload state
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -267,6 +276,45 @@ const FileBrowser = () => {
     fetchDirectoryContents(volume.destination);
   };
 
+  const resetEditorUiState = () => {
+    setEditorHeight(DEFAULT_EDITOR_HEIGHT);
+    setEditorSearchTerm('');
+    setIsCaseSensitiveSearch(false);
+    setEditorSearchFeedback('');
+  };
+
+  const findInEditor = (backwards = false) => {
+    const searchTerm = editorSearchTerm.trim();
+
+    if (!searchTerm) {
+      setEditorSearchFeedback('Enter text to search.');
+      return;
+    }
+
+    if (!editorRef.current || typeof editorRef.current.find !== 'function') {
+      return;
+    }
+
+    const matchRange = editorRef.current.find(searchTerm, {
+      backwards,
+      wrap: true,
+      caseSensitive: isCaseSensitiveSearch,
+      wholeWord: false,
+      regExp: false,
+    });
+
+    if (!matchRange) {
+      setEditorSearchFeedback(`No matches for "${searchTerm}".`);
+      return;
+    }
+
+    setEditorSearchFeedback('');
+
+    if (typeof editorRef.current.focus === 'function') {
+      editorRef.current.focus();
+    }
+  };
+
   const handleFileClick = async (file) => {
     if (file.isDirectory) {
       // Navigate to directory
@@ -325,6 +373,7 @@ const FileBrowser = () => {
         setEditorMode(mode);
         setCurrentFile(file);
         setFileContent(res.data.content);
+        resetEditorUiState();
         setShowEditor(true);
         setLoading(false);
       } catch (err) {
@@ -500,6 +549,8 @@ const FileBrowser = () => {
     setShowEditor(false);
     setCurrentFile(null);
     setFileContent('');
+    resetEditorUiState();
+    editorRef.current = null;
   };
 
   const getFileIcon = (file) => {
@@ -716,6 +767,7 @@ const FileBrowser = () => {
         onHide={closeEditor}
         size="lg"
         backdrop="static"
+        dialogClassName="file-editor-modal"
       >
         <Modal.Header closeButton>
           <Modal.Title>
@@ -723,6 +775,81 @@ const FileBrowser = () => {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          <Row className="g-3 align-items-end mb-3">
+            <Col lg={7}>
+              <Form.Label htmlFor="editor-search-input" className="mb-1">
+                Search In File
+              </Form.Label>
+              <InputGroup>
+                <Form.Control
+                  id="editor-search-input"
+                  type="text"
+                  placeholder="Enter text and press Enter"
+                  value={editorSearchTerm}
+                  onChange={(e) => {
+                    setEditorSearchTerm(e.target.value);
+                    setEditorSearchFeedback('');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      findInEditor(e.shiftKey);
+                    }
+                  }}
+                />
+                <Button
+                  variant="outline-secondary"
+                  onClick={() => findInEditor(true)}
+                  disabled={!editorSearchTerm.trim()}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline-secondary"
+                  onClick={() => findInEditor(false)}
+                  disabled={!editorSearchTerm.trim()}
+                >
+                  Next
+                </Button>
+              </InputGroup>
+              <Form.Check
+                className="mt-2"
+                id="editor-search-case-sensitive"
+                type="checkbox"
+                label="Case sensitive"
+                checked={isCaseSensitiveSearch}
+                onChange={(e) => {
+                  setIsCaseSensitiveSearch(e.target.checked);
+                  setEditorSearchFeedback('');
+                }}
+              />
+              {editorSearchFeedback && (
+                <Form.Text className="text-danger">{editorSearchFeedback}</Form.Text>
+              )}
+            </Col>
+            <Col lg={5}>
+              <Form.Label htmlFor="editor-height-range" className="mb-1">
+                Editor Height: {editorHeight}px
+              </Form.Label>
+              <div className="d-flex align-items-center gap-2">
+                <Form.Range
+                  id="editor-height-range"
+                  min={MIN_EDITOR_HEIGHT}
+                  max={MAX_EDITOR_HEIGHT}
+                  step={10}
+                  value={editorHeight}
+                  onChange={(e) => setEditorHeight(Number(e.target.value))}
+                />
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={() => setEditorHeight(DEFAULT_EDITOR_HEIGHT)}
+                >
+                  Reset
+                </Button>
+              </div>
+            </Col>
+          </Row>
           <AceEditor
             mode={editorMode}
             theme={editorTheme}
@@ -730,6 +857,9 @@ const FileBrowser = () => {
             value={fileContent}
             name="file-editor"
             editorProps={{ $blockScrolling: true }}
+            onLoad={(editor) => {
+              editorRef.current = editor;
+            }}
             setOptions={{
               useWorker: false,
               showLineNumbers: true,
@@ -742,7 +872,7 @@ const FileBrowser = () => {
               enableSnippets: true,
               showPrintMargin: false,
             }}
-            style={{ width: '100%', height: '500px', marginBottom: '1rem' }}
+            style={{ width: '100%', height: `${editorHeight}px`, marginBottom: '1rem' }}
           />
         </Modal.Body>
         <Modal.Footer>

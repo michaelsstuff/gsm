@@ -51,6 +51,7 @@
 - Mods browser with single and bulk mod downloads
 - Docker Compose management UI (list/create/edit/deploy/redeploy/logs)
 - Admin file browser with in-container file edit/upload/download/delete
+- File browser editor enhancements (adjustable editor height, resizable modal, in-file text search)
 - **User profile page with form validation** ✅
 
 ### Backup System ✅
@@ -71,7 +72,6 @@
 
 ### Feature Enhancements
 
-- [ ] File browser editor UX improvements (resizable editor + in-editor search, issue #16)
 - [ ] Additional file browser security hardening and UX polish
 - [ ] Advanced monitoring/metrics and alerting (beyond current status + logs)
 - [ ] User permission granularity (per-server access)
@@ -111,7 +111,6 @@
 ## Known Issues
 
 - Docker socket permissions require careful host configuration
-- File browser editor still lacks resize/search capabilities on `master` (tracked in issue #16)
 - Large file uploads/downloads may impact performance
 - Real-time status polling can be resource intensive with larger server counts
 - First-time NPM setup requires manual account registration and proxy host configuration

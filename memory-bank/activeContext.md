@@ -7,6 +7,7 @@
 
 ## Recent Changes
 
+- **File Browser Editor UX:** Added adjustable editor height control, resizable editor modal, and in-file text search (next/previous, optional case sensitivity) for admin file editing
 - **Documentation Refactoring:** Split README into focused docs under `docs/`:
   - `docs/architecture.md` - Traffic flow diagrams and security model
   - `docs/troubleshooting.md` - Common issues and solutions
