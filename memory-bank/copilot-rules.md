@@ -93,6 +93,12 @@
 - Example: `fix: Correct NPM first-time setup instructions`
 - The code changes speak for themselves - no need for lengthy explanations
 
+## 🔏 Git Signing Rules
+
+- Never use `--no-gpg-sign` for commits.
+- If a commit fails due to GPG/pinentry/signing issues, stop and provide the exact `git commit ...` command for the user to run manually.
+- Do not bypass or disable commit signing in automation.
+
 ## �📖 Markdown Standards
 
 - Follow [markdownlint](https://github.com/DavidAnson/markdownlint/) rules for all Markdown files
