@@ -9,6 +9,7 @@
 - Pre-built Docker images published to Docker Hub
 - GitHub Actions CI/CD for multi-arch builds (amd64, arm64)
 - Reusable test workflow for frontend and backend in GitHub Actions
+- Preview image workflow for feature branches and pull requests (preview-only tags)
 - Environment variable validation in docker-compose.yml
 - Backend health check endpoint and compose healthcheck wiring
 - Simplified deployment with standard `docker compose` commands

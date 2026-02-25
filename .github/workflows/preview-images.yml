@@ -1,0 +1,80 @@
+name: Build Preview Images
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-images-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  build-preview:
+    needs: test
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_TOKEN != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+    strategy:
+      matrix:
+        service:
+          - name: backend
+            context: ./server
+            dockerfile: ./server/Dockerfile
+            image: gsm-backend
+          - name: frontend
+            context: ./client
+            dockerfile: ./client/Dockerfile
+            image: gsm-frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: env.DOCKER_USERNAME != '' && env.DOCKER_TOKEN != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_TOKEN }}
+
+      - name: Extract preview metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_USERNAME }}/${{ matrix.service.image }}
+          tags: |
+            type=sha,format=short,prefix=preview-sha-
+            type=ref,event=branch,prefix=preview-
+            type=ref,event=pr,prefix=preview-
+
+      - name: Build and push preview ${{ matrix.service.name }} image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service.context }}
+          file: ${{ matrix.service.dockerfile }}
+          build-args: |
+            GSM_VERSION=${{ github.sha }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ env.DOCKER_USERNAME != '' && env.DOCKER_TOKEN != '' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

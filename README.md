@@ -12,7 +12,6 @@
 
 Web application for managing game servers running as Docker containers. Features real-time status monitoring, backup scheduling, and Discord notifications via a secure admin interface.
 
-
 ## Table of Contents
 
 - [Features](#features)
@@ -20,6 +19,7 @@ Web application for managing game servers running as Docker containers. Features
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
 - [Management](#management)
+- [Preview Images](#preview-images)
 - [Volume Mounts](#volume-mounts)
 - [Game Server Backups](#game-server-backups)
 - [External Integrations](#external-integrations)
@@ -30,12 +30,12 @@ Web application for managing game servers running as Docker containers. Features
 - [License](#license)
 - [Contributing](#contributing)
 
-
 ## What This Is
 
 **GSM is a modern web-based platform for managing, provisioning, and controlling game servers using Docker Compose.**
 
 With GSM, you can:
+
 - Create and deploy new game servers from Compose templates via the web UI
 - Monitor real-time status of all managed servers
 - Start, stop, restart, and remove game server containers
@@ -45,11 +45,9 @@ With GSM, you can:
 
 GSM supports both managing existing Docker containers and provisioning new ones, all from a secure, role-based admin interface. See the documentation for advanced Compose management, backup strategies, and integration details.
 
-
 ## External Integrations
 
 This project uses several external APIs and services for enhanced functionality, security, and game metadata. See [docs/integrations.md](docs/integrations.md) for a full list and details on each integration.
-
 
 ## Features
 
@@ -62,6 +60,7 @@ This project uses several external APIs and services for enhanced functionality,
 
 ## Screenshots
 
+<!-- markdownlint-disable MD033 -->
 <details>
 <summary><b>📸 View Application Screenshots</b> (click to expand)</summary>
 
@@ -79,6 +78,7 @@ This project uses several external APIs and services for enhanced functionality,
 </div>
 
 </details>
+<!-- markdownlint-enable MD033 -->
 
 ## Architecture
 
@@ -229,7 +229,7 @@ docker compose up -d
 4. SSL Tab: Request SSL Certificate, enable Force SSL and HSTS
 5. Access: `https://your-domain.com`
 
-📚 Full NPM guide: https://nginxproxymanager.com/guide/
+📚 Full NPM guide: [nginxproxymanager.com/guide](https://nginxproxymanager.com/guide/)
 
 ### 5. First Use
 
@@ -264,12 +264,24 @@ docker exec gsm-mongodb mongodump \
   --gzip
 ```
 
+## Preview Images
+
+Feature branches and pull requests now build preview images through GitHub Actions.
+
+- Stable release tags (`latest`, `vX.Y.Z`) remain unchanged.
+- Preview tags are published separately for testing:
+  - `preview-sha-<shortsha>` (immutable)
+  - `preview-<branch-name>` (feature branch pushes)
+  - `preview-pr-<number>` (pull requests from this repository)
+
+Use preview tags in your compose overrides to test beta changes without affecting production images.
+
 ## Volume Mounts
 
 Backend requires these mounts:
 
 | Mount | Purpose |
-|-------|---------|
+| ----- | ------- |
 | `/var/run/docker.sock` | Docker API access to control containers |
 | `/var/opt/container-volumes` | Parent directory containing game server data (read-only) |
 | `./backups` | Where backup archives are stored |
@@ -279,7 +291,8 @@ Backend requires these mounts:
 For backups to work, your game server containers must store their persistent data in subdirectories named after the **container name** you configure in GSM.
 
 **Example:** When you add a server in GSM with container name `minecraft-server`, the backup system looks for data at:
-```
+
+```text
 /var/opt/container-volumes/minecraft-server/
 ```
 
@@ -295,7 +308,8 @@ services:
 ```
 
 Expected structure:
-```
+
+```text
 /var/opt/container-volumes/
 ├── minecraft-server/      # Matches container name "minecraft-server"
 ├── valheim-server/        # Matches container name "valheim-server"
