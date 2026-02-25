@@ -381,12 +381,12 @@ body.dark-mode .btn-light {
 }
 
 /* General overrides for any elements missing the theme styling */
-body.dark-mode * {
+body.dark-mode *:not([class^="ace_"]):not([class*=" ace_"]) {
   border-color: var(--border-color);
 }
 
 /* Fix for any hard-coded background colors */
-body.dark-mode [style*="background-color"] {
+body.dark-mode [style*="background-color"]:not([class^="ace_"]):not([class*=" ace_"]) {
   background-color: var(--bg-color) !important;
 }
 
@@ -487,7 +487,7 @@ body.dark-mode .table .btn-outline-danger:hover {
 
 /* Fix any paragraph or span text */
 body.dark-mode p,
-body.dark-mode span:not(.badge):not(.btn) {
+body.dark-mode span:not(.badge):not(.btn):not([class^="ace_"]):not([class*=" ace_"]) {
   color: var(--text-color) !important;
 }
 
